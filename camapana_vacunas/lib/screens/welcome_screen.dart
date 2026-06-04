@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/mock_database.dart';
-import 'dashboard_screen.dart';
-import 'create_profile_screen.dart';
+import '../routes/app_routes.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -21,10 +20,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   void _ingresarConPerfil(dynamic usuario) {
     db.usuarioActivo = usuario;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const DashboardScreen()),
-    );
+    Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
   }
 
   @override
@@ -36,7 +32,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600), // Buen ancho para web
+          constraints: const BoxConstraints(maxWidth: 600),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -68,15 +64,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CreateProfileScreen()),
-                  ).then((_) => setState(() {})); // Refresca la lista al volver
+                  Navigator.pushNamed(context, AppRoutes.createProfile)
+                      .then((_) => setState(() {})); // Refresca la lista al volver
                 },
                 icon: const Icon(Icons.person_add),
                 label: const Padding(
                   padding: EdgeInsets.all(12.0),
-                  child: Text("Crear Nuevo Perfil (Paciente)", style: TextStyle(fontSize: 16)),
+                  child: Text("Crear Nuevo Perfil", style: TextStyle(fontSize: 16)),
                 ),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),

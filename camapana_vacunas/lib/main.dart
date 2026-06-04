@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/welcome_screen.dart';
+import 'routes/app_routes.dart'; // <-- ESTA ES LA LÍNEA QUE FALTABA
 
 void main() {
   runApp(const VacunacionApp());
@@ -17,7 +17,9 @@ class VacunacionApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const WelcomeScreen(), // Apuntamos a la nueva pantalla
+      // Integración del sistema de rutas centralizado
+      initialRoute: AppRoutes.welcome,
+      routes: AppRoutes.getRoutes(),
     );
   }
 }
