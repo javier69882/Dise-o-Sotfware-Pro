@@ -1,6 +1,8 @@
 import '../transacciones/cita_vacunacion.dart';
 import '../usuarios/paciente.dart';
 import '../campanas/inventario_vacuna.dart';
+import '../notificaciones/notificacion_manager.dart';
+import '../../utils/date_formatter.dart';
 
 class CentroVacunacion {
   String idCentro; // PK
@@ -51,13 +53,23 @@ class CentroVacunacion {
   CitaVacunacion? crearCita(DateTime fecha, Paciente paciente, String idTramo) {
     if (consultarDisponibilidad(fecha)) {
       var nuevaCita = CitaVacunacion(
-        idCita: DateTime.now().millisecondsSinceEpoch.toString(), 
+        idCita: "CITA-${DateTime.now().millisecondsSinceEpoch}",
         rutPaciente: paciente.rut,
         idTramo: idTramo,
-        idCentro: idCentro,
-        fechaHora: fecha,
+        idCentro: this.idCentro,
+        fechaHora: fecha, // Corregido: usa el parámetro 'fecha'
+        estado: "Programada", 
       );
+
       citasAgendadas.add(nuevaCita);
+
+      // --- NUEVO CÓDIGO HU-16: DISPARAR NOTIFICACIÓN ---
+      NotificacionManager().notificarNuevaCita(
+        paciente.rut, 
+        DateFormatter.formatDateTime(fecha), // Corregido: usa el parámetro 'fecha'
+        this.nombre
+      );
+
       return nuevaCita;
     }
     return null;

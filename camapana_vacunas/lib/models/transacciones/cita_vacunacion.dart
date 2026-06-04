@@ -1,15 +1,18 @@
+import '../usuarios/paciente.dart';
 import '../notificaciones/i_observador_cita.dart';
+import '../notificaciones/notificacion_manager.dart';
 
 class CitaVacunacion {
-  String idCita; // PK
-  String rutPaciente; // FK
-  String idTramo; // FK
-  String idCentro; // FK
-  
+  String idCita;
+  String rutPaciente;
+  String idTramo;
+  String idCentro;
   DateTime fechaHora;
-  String estado;
-  String motivoCambio;
   
+  // Atributo privado para controlar el setter
+  String _estado; 
+  
+  // Lista de Observadores
   final List<IObservadorCita> _observadores = [];
 
   CitaVacunacion({
@@ -18,27 +21,36 @@ class CitaVacunacion {
     required this.idTramo,
     required this.idCentro,
     required this.fechaHora,
-    this.estado = 'Programada',
-    this.motivoCambio = 'Cita inicial creada',
-  });
-
-  void agregarObservador(IObservadorCita obs) {
-    _observadores.add(obs);
+    required String estado,
+  }) : _estado = estado {
+    // Se suscribe automáticamente al Manager al instanciarse
+    agregarObservador(NotificacionManager());
   }
 
-  void eliminarObservador(IObservadorCita obs) {
-    _observadores.remove(obs);
+  // Getter del estado
+  String get estado => _estado;
+
+  // Setter interceptado (Notifica al cambiar)
+  set estado(String nuevoEstado) {
+    if (_estado != nuevoEstado) {
+      _estado = nuevoEstado;
+      _notificarObservadores("Cambio gestionado por el sistema o profesional.");
+    }
   }
 
-  void cambiarEstado(String nuevoEstado, String motivo) {
-    estado = nuevoEstado;
-    motivoCambio = motivo;
-    notificarObservadores();
+  void agregarObservador(IObservadorCita observador) {
+    if (!_observadores.contains(observador)) {
+      _observadores.add(observador);
+    }
   }
 
-  void notificarObservadores() {
+  void removerObservador(IObservadorCita observador) {
+    _observadores.remove(observador);
+  }
+
+  void _notificarObservadores(String motivo) {
     for (var observador in _observadores) {
-      observador.actualizarEstadoCita(estado, motivoCambio);
+      observador.actualizarEstadoCita(_estado, motivo);
     }
   }
 }

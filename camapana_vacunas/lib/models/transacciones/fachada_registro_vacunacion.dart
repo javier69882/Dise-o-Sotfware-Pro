@@ -1,5 +1,6 @@
 import '../usuarios/paciente.dart';
 import '../centros/centro_vacunacion.dart';
+import '../notificaciones/notificacion_manager.dart'; // <-- Nueva importación
 import 'cita_vacunacion.dart';
 import 'registro_vacunacion.dart';
 import '../../services/mock_database.dart';
@@ -16,22 +17,21 @@ class FachadaRegistroVacunacion {
     try {
       var db = MockDatabase();
 
-      // 1. Obtener vacuna requerida
       var campana = db.campanas.firstWhere((c) => c.tramos.any((t) => t.idTramo == cita.idTramo));
       String idVacunaRequerida = campana.vacuna.idVacuna;
 
-      // 2. Control de Inventario y Stock
       var inventario = centro.inventarios.firstWhere(
         (inv) => inv.vacuna.idVacuna == idVacunaRequerida && inv.cantidadDisponible > 0 && !inv.estaVencida(),
         orElse: () => throw Exception("Sede sin stock vigente para esta inmunización.")
       );
 
-      // 3. Modificaciones transaccionales simultáneas
-      inventario.cantidadDisponible -= 1; // Restar stock
-      cita.estado = "Completada";         // Modificar Cita
-      paciente.estadoVacunacion = "Completo"; // Actualizar esquema paciente
+      inventario.cantidadDisponible -= 1; 
+      
+      // AQUÍ SE DISPARA EL PATRÓN OBSERVER AUTOMÁTICAMENTE
+      cita.estado = "Completada";         
+      
+      paciente.estadoVacunacion = "Completo"; 
 
-      // 4. CREAR E INSERTAR EL REGISTRO (Fachada unifica la creación de la transacción)
       var nuevoRegistro = RegistroVacunacion(
         idRegistro: "REG-${DateTime.now().millisecondsSinceEpoch}",
         rutPaciente: paciente.rut,
@@ -45,6 +45,9 @@ class FachadaRegistroVacunacion {
       );
 
       db.historialRegistros.add(nuevoRegistro);
+
+      // AQUÍ SE HACE LA LLAMADA DIRECTA REQUERIDA POR EL UML
+      NotificacionManager().notificarRegistroInmunizacion(paciente.rut, nuevoRegistro.idRegistro);
 
       return "Éxito: Inmunización registrada para ${paciente.nombres}. Lote: ${inventario.lote}";
     } catch (e) {

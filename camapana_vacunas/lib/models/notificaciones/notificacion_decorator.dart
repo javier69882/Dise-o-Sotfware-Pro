@@ -1,15 +1,13 @@
-import 'notificacion_decorator.dart';
+import 'i_notificacion.dart';
 
-class NotificacionWhatsApp extends NotificacionDecorator {
-  NotificacionWhatsApp(super.notificacionBase);
+abstract class NotificacionDecorator implements INotificacion {
+  final INotificacion notificacionBase;
+
+  NotificacionDecorator(this.notificacionBase);
 
   @override
   void enviarMensaje() {
-    super.enviarMensaje(); // Envía la base
-    _enviarPorWhatsApp();  // Añade funcionalidad
-  }
-
-  void _enviarPorWhatsApp() {
-    print("Enviando copia del mensaje vía WhatsApp...");
+    // Delega la ejecución al objeto base (o al decorador anterior)
+    notificacionBase.enviarMensaje();
   }
 }
