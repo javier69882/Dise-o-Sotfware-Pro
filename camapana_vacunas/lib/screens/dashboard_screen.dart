@@ -4,13 +4,14 @@ import '../models/usuarios/administrador.dart';
 import '../models/usuarios/secretario.dart';
 import '../models/usuarios/paciente.dart';
 import '../models/usuarios/enfermero.dart';
-import '../models/usuarios/medico.dart'; // Agregamos Médico
+import '../models/usuarios/medico.dart';
 import '../routes/app_routes.dart';
 
-// Importamos las 3 vistas separadas
+// Importación de las 4 pantallas 100% separadas por Rol
 import 'admin_dashboard.dart';
-import 'agendamiento_dashboard.dart';
-import 'enfermero_dashboard.dart'; // Importamos la nueva vista
+import 'paciente_dashboard.dart';
+import 'secretario_dashboard.dart';
+import 'enfermero_dashboard.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -23,15 +24,15 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = MockDatabase();
-    
     if (db.usuarioActivo == null) return const SizedBox.shrink();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Panel: ${db.usuarioActivo!.nombres}"),
+        title: Text("Panel: ${db.usuarioActivo!.nombres} (${db.usuarioActivo!.runtimeType})"),
+        backgroundColor: Colors.teal.shade50,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.teal),
             tooltip: "Cerrar Sesión",
             onPressed: () => _cerrarSesion(context),
           )
@@ -40,23 +41,18 @@ class DashboardScreen extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: _seleccionarVistaSegunRol(db.usuarioActivo),
+          child: _enrutarPorRol(db.usuarioActivo),
         ),
       ),
     );
   }
 
-  Widget _seleccionarVistaSegunRol(dynamic usuarioActivo) {
-    if (usuarioActivo is Administrador) {
-      return const AdminDashboard();
-    }
-    if (usuarioActivo is Secretario || usuarioActivo is Paciente) {
-      return const AgendamientoDashboard();
-    }
-    if (usuarioActivo is Enfermero || usuarioActivo is Medico) {
-      return const EnfermeroDashboard(); // Redirige al nuevo panel de Fachada
-    }
+  Widget _enrutarPorRol(dynamic usuario) {
+    if (usuario is Administrador) return const AdminDashboard();
+    if (usuario is Paciente) return const PacienteDashboard();
+    if (usuario is Secretario) return const SecretarioDashboard();
+    if (usuario is Enfermero || usuario is Medico) return const EnfermeroDashboard();
     
-    return const Center(child: Text("Rol no reconocido"));
+    return const Center(child: Text("Error: Rol no parametrizado en el sistema."));
   }
 }
