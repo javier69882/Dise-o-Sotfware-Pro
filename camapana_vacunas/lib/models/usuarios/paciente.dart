@@ -1,6 +1,7 @@
 import 'persona_usuaria.dart';
 
 class Paciente extends PersonaUsuaria {
+  String? rutSecretarioCreador; // FK puede ser NULL
   String prevision;
   String grupoRiesgo;
   String estadoVacunacion;
@@ -12,13 +13,9 @@ class Paciente extends PersonaUsuaria {
     required super.fechaNacimiento,
     required super.correo,
     required super.telefono,
+    this.rutSecretarioCreador,
     required this.prevision,
     required this.grupoRiesgo,
     required this.estadoVacunacion,
   });
-
-  void iniciarAgendamiento() {
-    print("Paciente $nombres iniciando agendamiento...");
-    // Lógica para abrir flujo de CitaVacunacion
-  }
 }

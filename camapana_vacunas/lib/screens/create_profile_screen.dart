@@ -16,30 +16,40 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
   final _nombresCtrl = TextEditingController();
   final _apellidosCtrl = TextEditingController();
   final _correoCtrl = TextEditingController();
+  
+  // Variable para almacenar la selección del grupo de riesgo
+  String _grupoRiesgoSeleccionado = "Público General";
+
+  // Opciones estandarizadas que hacen "match" con los tramos de campaña
+  final List<String> _opcionesRiesgo = [
+    "Adultos Mayores",
+    "Crónicos",
+    "Embarazadas",
+    "Personal de Salud",
+    "Jovenes Sanos",
+    "Público General"
+  ];
 
   void _crearYGuardar() {
     if (_formKey.currentState!.validate()) {
-      // Crear el objeto Paciente con los datos del formulario
       var nuevoPaciente = Paciente(
         rut: _rutCtrl.text,
         nombres: _nombresCtrl.text,
         apellidos: _apellidosCtrl.text,
         correo: _correoCtrl.text,
-        telefono: "S/N", // Por defecto para hacer el form más corto
-        fechaNacimiento: DateTime(2000, 1, 1), 
+        telefono: "S/N", 
+        fechaNacimiento: DateTime(2000, 1, 1), // Simplificado por ahora
         prevision: "Fonasa", 
-        grupoRiesgo: "Jovenes Sanos", 
+        grupoRiesgo: _grupoRiesgoSeleccionado, // Usamos la variable del dropdown
         estadoVacunacion: "Sin vacunas"
       );
 
-      // Guardar en la Mock DB
       MockDatabase().usuarios.add(nuevoPaciente);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Perfil creado exitosamente')),
       );
 
-      // Volver a la pantalla de bienvenida
       Navigator.pop(context);
     }
   }
@@ -82,6 +92,28 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                     decoration: const InputDecoration(labelText: "Correo Electrónico", border: OutlineInputBorder()),
                     validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                   ),
+                  const SizedBox(height: 16),
+                  
+                  // Nuevo Dropdown para HU-07
+                  DropdownButtonFormField<String>(
+                    value: _grupoRiesgoSeleccionado,
+                    decoration: const InputDecoration(
+                      labelText: "Grupo de Riesgo",
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _opcionesRiesgo.map((grupo) {
+                      return DropdownMenuItem(
+                        value: grupo,
+                        child: Text(grupo),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        _grupoRiesgoSeleccionado = val!;
+                      });
+                    },
+                  ),
+                  
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _crearYGuardar,

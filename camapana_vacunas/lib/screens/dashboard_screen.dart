@@ -8,6 +8,7 @@ import '../models/usuarios/empresa.dart';
 import '../models/transacciones/cita_vacunacion.dart';
 import '../models/campanas/tramo_campana.dart';
 import '../models/campanas/campana.dart';
+import '../models/centros/centro_vacunacion.dart';
 import 'welcome_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -19,6 +20,10 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final db = MockDatabase();
+
+  Campana? _campanaSeleccionada;
+  TramoCampana? _tramoSeleccionado;
+  CentroVacunacion? _centroSeleccionado;
 
   void _cerrarSesion() {
     db.usuarioActivo = null;
@@ -59,7 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return const Center(child: Text("Rol no reconocido"));
   }
 
-  // --- PANEL ADMINISTRADOR ---
+  // --- PANEL ADMINISTRADOR (Sin cambios) ---
   Widget _buildPanelAdmin() {
     var admin = db.usuarioActivo as Administrador;
     return Padding(
@@ -72,7 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               const Text("Gestión de Campañas", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
-                onPressed: _mostrarFormularioCampana,
+                onPressed: () => _mostrarFormularioCampana(admin),
                 icon: const Icon(Icons.add),
                 label: const Text("Nueva Campaña"),
               )
@@ -84,22 +89,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
               itemCount: db.campanas.length,
               itemBuilder: (context, index) {
                 var campana = db.campanas[index];
-                String tipoStr = campana.empresaAsociada == null 
-                    ? "Pública" 
-                    : "Empresa: ${campana.empresaAsociada!.razonSocial}";
-
+                String tipoStr = campana.empresaAsociada == null ? "Pública" : "Empresa: ${campana.empresaAsociada!.razonSocial}";
                 return Card(
-                  child: ListTile(
-                    title: Text(campana.nombre),
-                    subtitle: Text("Avance: ${campana.calcularAvanceGlobal()}%\nTipo: $tipoStr"),
-                    trailing: ElevatedButton(
-                      onPressed: () {
-                        admin.solicitarReporteEfectos(campana);
-                        var reporte = campana.generarReporteEfectos();
-                        _mostrarDialogo("Reporte de Efectos", reporte.toString());
-                      },
-                      child: const Text("Generar Reporte"),
-                    ),
+                  child: ExpansionTile(
+                    title: Text(campana.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text("Avance: ${campana.calcularAvanceGlobal().toStringAsFixed(1)}% | Tipo: $tipoStr | Vacuna: ${campana.vacuna.nombre}"),
+                    children: [
+                      const Divider(),
+                      const Text("Tramos de Vacunación", style: TextStyle(fontWeight: FontWeight.bold)),
+                      ...campana.tramos.map((t) => ListTile(
+                        leading: const Icon(Icons.group),
+                        title: Text(t.nombreTramo),
+                        subtitle: Text("Objetivo: ${t.poblacionObjetivo} | Prioridad: ${t.nivelPrioridad}\nFechas: ${t.fechaInicio.toString().substring(0,10)} al ${t.fechaFin.toString().substring(0,10)}"),
+                      )),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () {
+                                admin.solicitarReporteEfectos(campana);
+                                var reporte = campana.generarReporteEfectos();
+                                _mostrarDialogo("Reporte de Efectos", reporte.toString());
+                              },
+                              icon: const Icon(Icons.analytics),
+                              label: const Text("Reporte Efectos"),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton.icon(
+                              onPressed: () => _mostrarFormularioTramo(campana),
+                              icon: const Icon(Icons.add_task),
+                              label: const Text("Añadir Tramo"),
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
                   ),
                 );
               },
@@ -110,18 +136,86 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Lógica de Formulario HU-05
-  void _mostrarFormularioCampana() {
+  void _mostrarFormularioTramo(Campana campana) {
     final formKey = GlobalKey<FormState>();
     final nombreCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
+    final prioridadCtrl = TextEditingController(text: "1");
+    String poblacionSeleccionada = "Adultos Mayores";
+    DateTime fechaInicio = DateTime.now();
+    DateTime fechaFin = DateTime.now().add(const Duration(days: 30));
+
+    final opcionesPoblacion = ["Adultos Mayores", "Crónicos", "Embarazadas", "Personal de Salud", "Jovenes Sanos", "Público General"];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text("Añadir Tramo a:\n${campana.nombre}"),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nombreCtrl,
+                        decoration: const InputDecoration(labelText: "Nombre del Tramo (ej. Rezago)"),
+                        validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: poblacionSeleccionada,
+                        decoration: const InputDecoration(labelText: "Población Objetivo"),
+                        items: opcionesPoblacion.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                        onChanged: (val) => setStateDialog(() => poblacionSeleccionada = val!),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: prioridadCtrl,
+                        decoration: const InputDecoration(labelText: "Nivel de Prioridad (1 = Mayor)"),
+                        keyboardType: TextInputType.number,
+                        validator: (v) => v!.isEmpty || int.tryParse(v) == null ? "Ingrese un número válido" : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState!.validate()) {
+                      var nuevoTramo = TramoCampana(
+                        idTramo: "TR-${DateTime.now().millisecondsSinceEpoch}", idCampana: campana.idCampana,
+                        nombreTramo: nombreCtrl.text, poblacionObjetivo: poblacionSeleccionada,
+                        nivelPrioridad: int.parse(prioridadCtrl.text), fechaInicio: fechaInicio, fechaFin: fechaFin,
+                      );
+                      setState(() { campana.agregarTramo(nuevoTramo); });
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text("Guardar Tramo"),
+                )
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
+  void _mostrarFormularioCampana(Administrador admin) {
+    final formKey = GlobalKey<FormState>();
+    final nombreCtrl = TextEditingController();
     String tipoSeleccionado = "Pública";
     Empresa? empresaSeleccionada = db.empresas.isNotEmpty ? db.empresas.first : null;
 
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder( // Permite actualizar estado dentro del dialog
+        return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: const Text("Crear Nueva Campaña"),
@@ -136,35 +230,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: const InputDecoration(labelText: "Nombre de la Campaña"),
                         validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                       ),
-                      TextFormField(
-                        controller: descCtrl,
-                        decoration: const InputDecoration(labelText: "Descripción"),
-                        validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
-                      ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         value: tipoSeleccionado,
                         decoration: const InputDecoration(labelText: "Público Objetivo"),
                         items: ["Pública", "Empresa"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                        onChanged: (val) {
-                          setStateDialog(() {
-                            tipoSeleccionado = val!;
-                          });
-                        },
+                        onChanged: (val) => setStateDialog(() => tipoSeleccionado = val!),
                       ),
-                      if (tipoSeleccionado == "Empresa") ...[
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<Empresa>(
-                          value: empresaSeleccionada,
-                          decoration: const InputDecoration(labelText: "Seleccionar Empresa"),
-                          items: db.empresas.map((e) => DropdownMenuItem(value: e, child: Text(e.razonSocial))).toList(),
-                          onChanged: (val) {
-                            setStateDialog(() {
-                              empresaSeleccionada = val;
-                            });
-                          },
-                        ),
-                      ]
                     ],
                   ),
                 ),
@@ -174,29 +246,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (formKey.currentState!.validate()) {
+                      String nuevaIdCampana = "CAMP-${DateTime.now().millisecondsSinceEpoch}";
                       var nuevaCampana = Campana(
-                        nombre: nombreCtrl.text,
-                        descripcion: descCtrl.text,
-                        fechaInicio: DateTime.now(),
-                        fechaTermino: DateTime.now().add(const Duration(days: 30)),
+                        idCampana: nuevaIdCampana, rutAdmin: admin.rut,
+                        vacuna: db.vacunas.first, nombre: nombreCtrl.text, descripcion: "Descripción",
+                        fechaInicio: DateTime.now(), fechaTermino: DateTime.now().add(const Duration(days: 30)),
                         empresaAsociada: tipoSeleccionado == "Empresa" ? empresaSeleccionada : null,
                       );
-                      
-                      // Añadimos un tramo general para que funcione el agendamiento por defecto
-                      nuevaCampana.agregarTramo(TramoCampana(
-                        nombreTramo: "General",
-                        poblacionObjetivo: "Jovenes Sanos",
-                        nivelPrioridad: 1,
-                        fechaInicio: DateTime.now(),
-                        fechaFin: DateTime.now().add(const Duration(days: 30))
-                      ));
-
-                      setState(() {
-                        db.campanas.add(nuevaCampana);
-                      });
-                      
+                      setState(() { db.campanas.add(nuevaCampana); });
                       Navigator.pop(context);
-                      _mostrarDialogo("Éxito", "La campaña ha sido creada y publicada correctamente.");
                     }
                   },
                   child: const Text("Guardar"),
@@ -209,62 +267,163 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- PANEL SECRETARIO / PACIENTE ---
+  // --- PANEL SECRETARIO / PACIENTE (CON FILTRO DE CENTROS) ---
   Widget _buildPanelAgendamiento() {
-    var campana = db.campanas.first;
-    var tramo = campana.tramos.first;
-    var centro = db.centros.first;
-    
+    if (db.campanas.isEmpty) return const Center(child: Text("No hay campañas activas."));
+
+    // 1. Inicialización segura de la campaña
+    _campanaSeleccionada ??= db.campanas.first;
+    if (!_campanaSeleccionada!.tramos.contains(_tramoSeleccionado)) {
+      _tramoSeleccionado = _campanaSeleccionada!.tramos.isNotEmpty ? _campanaSeleccionada!.tramos.first : null;
+    }
+
+    // 2. FILTRAR CENTROS QUE TIENEN STOCK DE LA VACUNA
+    List<CentroVacunacion> centrosConStock = db.centros.where((c) => 
+      c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna)
+    ).toList();
+
+    // 3. Reseteo seguro del centro si cambia la campaña y el anterior ya no sirve
+    if (_centroSeleccionado != null && !centrosConStock.contains(_centroSeleccionado)) {
+      _centroSeleccionado = null;
+    }
+    if (_centroSeleccionado == null && centrosConStock.isNotEmpty) {
+      _centroSeleccionado = centrosConStock.first;
+    }
+
     Paciente pacienteObjetivo = db.usuarioActivo is Paciente 
         ? db.usuarioActivo as Paciente 
         : db.usuarios.firstWhere((u) => u is Paciente) as Paciente;
+
+    List<CitaVacunacion> misCitasTotales = [];
+    for (var c in db.centros) {
+      for (var cita in c.citasAgendadas) {
+        if (db.usuarioActivo is Paciente) {
+          if (cita.rutPaciente == pacienteObjetivo.rut) misCitasTotales.add(cita);
+        } else {
+          misCitasTotales.add(cita); 
+        }
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Agendamiento Web: ${centro.nombre}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text("Solicitud de Agendamiento Web", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              bool ok = tramo.validarPrioridadPaciente(pacienteObjetivo);
-              if (!ok) {
-                _mostrarDialogo("Error", "El paciente no pertenece a la población objetivo.");
-                return;
-              }
+          
+          DropdownButtonFormField<Campana>(
+            value: _campanaSeleccionada,
+            decoration: const InputDecoration(labelText: "Seleccionar Campaña", border: OutlineInputBorder()),
+            items: db.campanas.map((c) => DropdownMenuItem(value: c, child: Text("${c.nombre} (Vacuna: ${c.vacuna.nombre})"))).toList(),
+            onChanged: (val) {
+              setState(() {
+                _campanaSeleccionada = val;
+                _tramoSeleccionado = val!.tramos.isNotEmpty ? val.tramos.first : null;
+                // Al cambiar la campaña, el build() filtrará automáticamente los centros
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          if (_campanaSeleccionada!.tramos.isEmpty)
+            const Text("Esta campaña no tiene tramos activos actualmente.", style: TextStyle(color: Colors.red))
+          else
+            DropdownButtonFormField<TramoCampana>(
+              value: _tramoSeleccionado,
+              decoration: const InputDecoration(labelText: "Seleccionar Tramo de Prioridad", border: OutlineInputBorder()),
+              items: _campanaSeleccionada!.tramos.map((t) => DropdownMenuItem(
+                value: t, 
+                child: Text("${t.nombreTramo} (Dirigido a: ${t.poblacionObjetivo})")
+              )).toList(),
+              onChanged: (val) => setState(() => _tramoSeleccionado = val),
+            ),
+          const SizedBox(height: 16),
 
+          // Selector de Centros Filtrados
+          if (centrosConStock.isEmpty)
+            const Text("⚠️ Ningún centro tiene stock disponible de la vacuna para esta campaña.", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+          else
+            DropdownButtonFormField<CentroVacunacion>(
+              value: _centroSeleccionado,
+              decoration: const InputDecoration(labelText: "Sedes disponibles con Stock", border: OutlineInputBorder()),
+              items: centrosConStock.map((c) => DropdownMenuItem(
+                value: c, 
+                child: Text("${c.nombre} - ${c.comuna} (${c.tipo})")
+              )).toList(),
+              onChanged: (val) => setState(() => _centroSeleccionado = val),
+            ),
+          const SizedBox(height: 24),
+
+          ElevatedButton.icon(
+            onPressed: (_tramoSeleccionado == null || _centroSeleccionado == null) ? null : () {
+              bool tienePrioridad = _tramoSeleccionado!.validarPrioridadPaciente(pacienteObjetivo);
               DateTime fechaCita = DateTime.now().add(const Duration(days: 1));
-              CitaVacunacion? cita = centro.crearCita(fechaCita, pacienteObjetivo);
 
-              if (cita != null) {
-                _mostrarDialogo("Éxito", "Cita creada para el ${cita.fechaHora.toString().substring(0,16)}");
-                setState(() {}); 
+              if (tienePrioridad) {
+                _procesarCita(_centroSeleccionado!, pacienteObjetivo, _tramoSeleccionado!.idTramo, fechaCita);
               } else {
-                _mostrarDialogo("Error", "No hay disponibilidad en la fecha seleccionada.");
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text("Advertencia de Prioridad"),
+                    content: Text(
+                      "Tu grupo de riesgo (${pacienteObjetivo.grupoRiesgo}) no coincide con la población prioritaria (${_tramoSeleccionado!.poblacionObjetivo})."
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _procesarCita(_centroSeleccionado!, pacienteObjetivo, _tramoSeleccionado!.idTramo, fechaCita);
+                        },
+                        child: const Text("Continuar de todos modos"),
+                      )
+                    ],
+                  )
+                );
               }
             },
-            child: const Text("Iniciar Agendamiento"),
+            icon: const Icon(Icons.event_available),
+            label: const Text("Confirmar y Agendar"),
           ),
-          const SizedBox(height: 20),
-          const Text("Mis citas agendadas:", style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 30),
+          const Divider(),
+          const SizedBox(height: 10),
+          const Text("Mis citas agendadas:", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
           Expanded(
-            child: ListView.builder(
-              itemCount: centro.citasAgendadas.length,
-              itemBuilder: (context, index) {
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.calendar_month),
-                    title: Text(centro.citasAgendadas[index].fechaHora.toString().substring(0, 16)),
-                    subtitle: Text("Estado: ${centro.citasAgendadas[index].estado}"),
-                  ),
-                );
-              },
-            ),
+            child: misCitasTotales.isEmpty 
+              ? const Text("Aún no tienes citas programadas.")
+              : ListView.builder(
+                itemCount: misCitasTotales.length,
+                itemBuilder: (context, index) {
+                  var cita = misCitasTotales[index];
+                  String nombreCentro = db.centros.firstWhere((c) => c.idCentro == cita.idCentro).nombre;
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.calendar_month, color: Colors.teal),
+                      title: Text(cita.fechaHora.toString().substring(0, 16)),
+                      subtitle: Text("Centro: $nombreCentro \nEstado: ${cita.estado}"),
+                    ),
+                  );
+                },
+              ),
           )
         ],
       ),
     );
+  }
+
+  void _procesarCita(CentroVacunacion centro, Paciente paciente, String idTramo, DateTime fechaCita) {
+    CitaVacunacion? cita = centro.crearCita(fechaCita, paciente, idTramo);
+    if (cita != null) {
+      _mostrarDialogo("Éxito", "Cita creada exitosamente en ${centro.nombre}");
+      setState(() {}); 
+    } else {
+      _mostrarDialogo("Error", "No hay disponibilidad en el centro para la fecha seleccionada.");
+    }
   }
 
   void _mostrarDialogo(String titulo, String contenido) {
