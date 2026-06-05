@@ -33,3 +33,22 @@ Ubicación en el dominio: Capa de Aplicación / Servicios. Actúa como un coordi
 
 Pertinencia al flujo: Actúa en el flujo como un Punto Central de Despacho. No importa en qué parte del viaje del paciente se dispare una alerta , este único objeto centraliza la orden y la procesa.
 
+Patrón Estructural: Decorator 
+
+Problema que resuelve: Permite crear una estructura flexible para añadirle responsabilidades adicionales a un objeto en tiempo de ejecución sin alterar su código original. Al absorber la delegación del mensaje, provoca que los decoradores específicos solo tengan que preocuparse por su propia tarea, manteniendo el código ordenado.
+
+Alternativa descartada: Herencia clásica por cada canal. Se descartó obligar a que cada tipo de notificación herede directamente de una clase madre rígida. Esto habría impedido combinar canales dinámicamente , forzándo a crear una clase distinta para cada combinación posible en el sistema.
+
+Ubicación en el dominio: Capa de Infraestructura / Servicios. Define el contrato técnico y el mecanismo de herencia para los componentes encargados de interactuar con los servicios externos de mensajería.
+
+Pertinencia al flujo: Actúa en la fase de Preparación y Composición. En el flujo de salida, sirve como el esqueleto que permite recibir el mensaje de texto plano y sostener la cadena de envolturas necesarias justo antes de que el comando final .enviarMensaje() dispare todos los envíos en cascada.
+
+Patrón Estructural: Facade 
+
+Problema que resuelve: Logra mantener el código limpio y legible al absorber la responsabilidad de interactuar con múltiples componentes, buscar en bases de datos y validar inventarios antes de completar el registro. Esto provoca que las clases internas que manejan la interfaz de usuario o los flujos principales de la aplicación no tengan que coordinar todo este desorden de objetos ni conocer los detalles de inventarios y estados, dejando que el código del sistema sea mucho más directo, limpio y fácil de mantener.
+
+Alternativa descartada: Coordinación dispersa. Se descartó que la pantalla de la aplicación llamara uno por uno a la base de datos, restara el stock del inventario, cambiara el estado de la cita y llamara al manager de notificaciones. Esto habría duplicado el código en varias partes y haría que cualquier cambio en las reglas de vacunación obligara a modificar múltiples archivos.
+
+Ubicación en el dominio: Capa de Aplicación / Servicios. Actúa como un orquestador de alto nivel que une distintas entidades del dominio (Paciente, Cita, Centro) para ejecutar un caso de uso específico del negocio.
+
+Pertinencia al flujo: Actúa en el flujo de Ejecución y Cierre. En el momento exacto en que el profesional de salud presiona el botón "Registrar Vacunación", la Fachada toma el control total del flujo, realiza todas las operaciones lógicas tras bambalinas en un solo viaje y devuelve un resultado definitivo (Éxito o Error) para que el sistema continúe su curso.
