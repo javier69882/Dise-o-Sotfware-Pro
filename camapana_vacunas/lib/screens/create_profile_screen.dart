@@ -22,6 +22,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
   final _nombresCtrl = TextEditingController();
   final _apellidosCtrl = TextEditingController();
   final _correoCtrl = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
 
   final _departamentoCtrl = TextEditingController();
   final _idSecretarioCtrl = TextEditingController();
@@ -61,7 +62,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
             nombres: _nombresCtrl.text,
             apellidos: _apellidosCtrl.text,
             correo: _correoCtrl.text,
-            telefono: "S/N",
+            telefono: _telefonoCtrl.text,
             fechaNacimiento: fechaNac,
             departamento: _departamentoCtrl.text.isEmpty
                 ? "General"
@@ -74,7 +75,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
             nombres: _nombresCtrl.text,
             apellidos: _apellidosCtrl.text,
             correo: _correoCtrl.text,
-            telefono: "S/N",
+            telefono: _telefonoCtrl.text,
             fechaNacimiento: fechaNac,
             idSecretario: _idSecretarioCtrl.text.isEmpty
                 ? "SEC-NUEVO"
@@ -87,7 +88,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
             nombres: _nombresCtrl.text,
             apellidos: _apellidosCtrl.text,
             correo: _correoCtrl.text,
-            telefono: "S/N",
+            telefono: _telefonoCtrl.text,
             fechaNacimiento: fechaNac,
             registro: _registroCtrl.text.isEmpty
                 ? "REG-000"
@@ -103,7 +104,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
             nombres: _nombresCtrl.text,
             apellidos: _apellidosCtrl.text,
             correo: _correoCtrl.text,
-            telefono: "S/N",
+            telefono: _telefonoCtrl.text,
             fechaNacimiento: fechaNac,
             registro: _registroCtrl.text.isEmpty
                 ? "REG-MED"
@@ -120,7 +121,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
             nombres: _nombresCtrl.text,
             apellidos: _apellidosCtrl.text,
             correo: _correoCtrl.text,
-            telefono: "S/N",
+            telefono: _telefonoCtrl.text,
             fechaNacimiento: fechaNac,
             prevision: "Fonasa",
             grupoRiesgo: _grupoRiesgoSeleccionado,
@@ -235,6 +236,37 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                       ).hasMatch(value)) {
                         return 'No tiene formato de correo';
                       } //chequea formato básico de correo
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _telefonoCtrl,
+                    decoration: const InputDecoration(
+                      hintText: '+56912345678 o 912345678',
+                      labelText: 'Telefóno de contacto',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Este campo es obligatorio.';
+                      }
+                      if (value[0] == '+') {
+                        if (!RegExp(r'^\+[0-9]+$').hasMatch(value)) {
+                          return ("Asegúrate de que solo hay números después del +");
+                        } //chequea que sea un + seguido solamente de números
+                        else if (value.length < 12 || value.length > 13) {
+                          return ("Chequea el largo");
+                        }
+                      } else {
+                        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                          return ("Asegúrate de que solo hay números");
+                        } //chequea que solo hay números
+                        else if (value.length < 8 || value.length > 9) {
+                          return ("Chequea el largo");
+                        }
+                      }
+
                       return null;
                     },
                   ),
