@@ -28,7 +28,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
   DateTime? _fechaSeleccionada;
   TimeOfDay? _horaSeleccionada;
 
-  // Variables Historial Médico (NUEVO: Listas y Controladores)
+  // Variables Historial Médico (Listas y Controladores)
   HistorialMedico? _historialGenerado;
   final List<String> _misAlergias = [];
   final List<String> _misCondiciones = [];
@@ -50,8 +50,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
       TimeOfDay actual = TimeOfDay(hour: horaInicio, minute: minInicio);
       TimeOfDay limite = TimeOfDay(hour: horaFin, minute: minFin);
 
-      while (actual.hour < limite.hour ||
-          (actual.hour == limite.hour && actual.minute < limite.minute)) {
+      while (actual.hour < limite.hour || (actual.hour == limite.hour && actual.minute < limite.minute)) {
         bloques.add(actual);
         int nextMin = actual.minute + 30;
         int nextHour = actual.hour;
@@ -69,9 +68,9 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
 
   Future<void> _seleccionarFecha(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
-      context: context,
+      context: context, 
       initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
+      firstDate: DateTime.now(), 
       lastDate: DateTime.now().add(const Duration(days: 90)),
       locale: const Locale('es', 'ES'),
     );
@@ -79,7 +78,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
     if (pickedDate != null && context.mounted) {
       setState(() {
         _fechaSeleccionada = pickedDate;
-        _horaSeleccionada = null;
+        _horaSeleccionada = null; 
       });
     }
   }
@@ -87,14 +86,9 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
   void _generarHistorialMedico(Paciente paciente) {
     var builder = HistorialMedicoBuilder();
     var director = DirectorHistorial(builder);
-
-    // Le pasamos al director los datos que el usuario agregó en la UI
+    
     setState(() {
-      _historialGenerado = director.construirHistorialCompleto(
-        paciente,
-        _misAlergias,
-        _misCondiciones,
-      );
+      _historialGenerado = director.construirHistorialCompleto(paciente, _misAlergias, _misCondiciones);
     });
   }
 
@@ -102,37 +96,116 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
   Widget build(BuildContext context) {
     Paciente miPerfil = db.usuarioActivo as Paciente;
 
-    return DefaultTabController(
-      length: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const TabBar(
-              tabs: [
-                Tab(icon: Icon(Icons.event), text: "Auto-Agendamiento"),
-                Tab(
-                  icon: Icon(Icons.medical_information),
-                  text: "Mi Historial Médico",
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          // ENCABEZADO
+          Container(
+            padding: const EdgeInsets.fromLTRB(32, 50, 32, 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Hola, ${miPerfil.nombres} 👋",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).colorScheme.primary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "Portal del Paciente • ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _buildPestanaAgendamiento(miPerfil),
-                  _buildPestanaHistorial(miPerfil),
-                ],
+          ),
+
+          // CUERPO PRINCIPAL (Pestañas y Contenido) 
+          Expanded(
+            child: DefaultTabController(
+              length: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // PESTAÑAS 
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: const TabBar(
+                        tabs: [
+                          Tab(icon: Icon(Icons.event_available_rounded), text: "Auto-Agendamiento"),
+                          Tab(icon: Icon(Icons.medical_information_rounded), text: "Mi Historial Médico"),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // CONTENIDO DE LAS PESTAÑAS
+                    Expanded(
+                      child: TabBarView(
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          _buildPestanaAgendamiento(miPerfil),
+                          _buildPestanaHistorial(miPerfil),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  // VISTA: PESTAÑA DE HISTORIAL MÉDICO
   Widget _buildPestanaHistorial(Paciente perfil) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,40 +214,31 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
         Expanded(
           flex: 1,
           child: ListView(
+            physics: const BouncingScrollPhysics(),
             children: [
-              const Text(
-                "Construir Antecedentes",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              Text("Construir Antecedentes", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
               const SizedBox(height: 16),
-
+              
               // Agregar Alergias
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _alergiaCtrl,
-                      decoration: const InputDecoration(
-                        labelText: "Añadir Alergia",
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: "Añadir Alergia", 
+                        prefixIcon: Icon(Icons.sick_outlined, color: Theme.of(context).colorScheme.primary)
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(
-                      Icons.add_circle,
-                      color: Colors.teal,
-                      size: 36,
-                    ),
+                    icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 36),
                     onPressed: () {
                       if (_alergiaCtrl.text.isNotEmpty) {
-                        setState(() {
-                          _misAlergias.add(_alergiaCtrl.text);
-                          _alergiaCtrl.clear();
-                        });
+                        setState(() { _misAlergias.add(_alergiaCtrl.text); _alergiaCtrl.clear(); });
                       }
                     },
-                  ),
+                  )
                 ],
               ),
               if (_misAlergias.isNotEmpty)
@@ -182,15 +246,13 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                   padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
                   child: Wrap(
                     spacing: 8.0,
-                    children: _misAlergias
-                        .map(
-                          (a) => Chip(
-                            label: Text(a),
-                            onDeleted: () =>
-                                setState(() => _misAlergias.remove(a)),
-                          ),
-                        )
-                        .toList(),
+                    children: _misAlergias.map((a) => Chip(
+                      label: Text(a, style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      deleteIconColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide.none,
+                      onDeleted: () => setState(() => _misAlergias.remove(a)),
+                    )).toList(),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -201,27 +263,20 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                   Expanded(
                     child: TextField(
                       controller: _condicionCtrl,
-                      decoration: const InputDecoration(
-                        labelText: "Añadir Condición Previa",
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: "Añadir Condición Previa", 
+                        prefixIcon: Icon(Icons.monitor_heart_outlined, color: Theme.of(context).colorScheme.primary)
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(
-                      Icons.add_circle,
-                      color: Colors.teal,
-                      size: 36,
-                    ),
+                    icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 36),
                     onPressed: () {
                       if (_condicionCtrl.text.isNotEmpty) {
-                        setState(() {
-                          _misCondiciones.add(_condicionCtrl.text);
-                          _condicionCtrl.clear();
-                        });
+                        setState(() { _misCondiciones.add(_condicionCtrl.text); _condicionCtrl.clear(); });
                       }
                     },
-                  ),
+                  )
                 ],
               ),
               if (_misCondiciones.isNotEmpty)
@@ -229,367 +284,326 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                   padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
                   child: Wrap(
                     spacing: 8.0,
-                    children: _misCondiciones
-                        .map(
-                          (c) => Chip(
-                            label: Text(c),
-                            onDeleted: () =>
-                                setState(() => _misCondiciones.remove(c)),
-                          ),
-                        )
-                        .toList(),
+                    children: _misCondiciones.map((c) => Chip(
+                      label: Text(c, style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      deleteIconColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide.none,
+                      onDeleted: () => setState(() => _misCondiciones.remove(c)),
+                    )).toList(),
                   ),
                 ),
-
+              
               const SizedBox(height: 32),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56)),
                 onPressed: () => _generarHistorialMedico(perfil),
-                icon: const Icon(Icons.download),
+                icon: const Icon(Icons.download_rounded),
                 label: const Text("Generar Documento"),
               ),
             ],
           ),
         ),
-
-        const SizedBox(width: 24),
-
+        
+        const SizedBox(width: 32),
+        
         // PANEL DERECHO: Visualización del Historial
         Expanded(
           flex: 2,
-          child: _historialGenerado == null
-              ? const Center(
-                  child: Text(
-                    "Llena tus antecedentes y presiona 'Generar Documento'.",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
-              : Card(
-                  elevation: 3,
-                  color: Colors.yellow.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: ListView(
-                      children: [
-                        const Center(
-                          child: Text(
-                            "🏥 REPORTE MÉDICO OFICIAL",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
+          child: _historialGenerado == null 
+            ? // Empty state: Sin documento generado
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5), 
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Ícono circular decorativo
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          shape: BoxShape.circle,
                         ),
-                        const Divider(thickness: 2),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "1. DATOS DEL PACIENTE",
+                        child: Icon(
+                          Icons.assignment_add, 
+                          size: 64,
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        "Sin documento generado",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        child: Text(
+                          "Agrega tus alergias o condiciones médicas en el panel izquierdo y presiona el botón 'Generar Documento' para visualizar tu reporte oficial.",
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal,
+                            fontSize: 15,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            height: 1.5,
                           ),
                         ),
-                        Text(_historialGenerado!.datosPersonales),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "2. ANTECEDENTES CLÍNICOS",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal,
-                          ),
-                        ),
-                        Text(
-                          "Alergias: ${_historialGenerado!.alergias}\nCondiciones: ${_historialGenerado!.condicionesPrevias}",
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "3. REGISTRO DE VACUNACIÓN",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal,
-                          ),
-                        ),
-                        Text(_historialGenerado!.vacunasAplicadas),
-                        const SizedBox(height: 30),
-                        const Divider(),
-                        Center(
-                          child: Text(
-                            "Documento generado el ${DateFormatter.formatDateTime(DateTime.now())}",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-        ),
+              )
+            : // DOCUMENTO GENERADO
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    )
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      Center(child: Text("🏥 REPORTE MÉDICO OFICIAL", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2, color: Theme.of(context).colorScheme.onBackground))),
+                      const SizedBox(height: 16),
+                      const Divider(thickness: 1),
+                      const SizedBox(height: 16),
+                      Text("1. DATOS DEL PACIENTE", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                      const SizedBox(height: 8),
+                      Text(_historialGenerado!.datosPersonales, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
+                      const SizedBox(height: 24),
+                      Text("2. ANTECEDENTES CLÍNICOS", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                      const SizedBox(height: 8),
+                      Text("Alergias: ${_historialGenerado!.alergias}\nCondiciones: ${_historialGenerado!.condicionesPrevias}", style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
+                      const SizedBox(height: 24),
+                      Text("3. REGISTRO DE VACUNACIÓN", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                      const SizedBox(height: 8),
+                      Text(_historialGenerado!.vacunasAplicadas, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
+                      const SizedBox(height: 40),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      Center(child: Text("Documento generado el ${DateFormatter.formatDateTime(DateTime.now())}", style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant))),
+                    ],
+                  ),
+                ),
+              ),
+        )
       ],
     );
   }
 
+  // VISTA: PESTAÑA DE AUTO-AGENDAMIENTO
   Widget _buildPestanaAgendamiento(Paciente miPerfil) {
-    if (db.campanas.isEmpty)
-      return const Center(
-        child: Text("No hay campañas activas en este momento."),
-      );
-
+    if (db.campanas.isEmpty) return Center(child: Text("No hay campañas activas en este momento.", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)));
+    
     _campanaSeleccionada ??= db.campanas.first;
     if (!_campanaSeleccionada!.tramos.contains(_tramoSeleccionado)) {
-      _tramoSeleccionado = _campanaSeleccionada!.tramos.isNotEmpty
-          ? _campanaSeleccionada!.tramos.first
-          : null;
+      _tramoSeleccionado = _campanaSeleccionada!.tramos.isNotEmpty ? _campanaSeleccionada!.tramos.first : null;
     }
 
-    List<CentroVacunacion> centrosConStock = db.centros
-        .where(
-          (c) => c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna),
-        )
-        .toList();
-    if (_centroSeleccionado != null &&
-        !centrosConStock.contains(_centroSeleccionado)) {
+    List<CentroVacunacion> centrosConStock = db.centros.where((c) => c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna)).toList();
+    if (_centroSeleccionado != null && !centrosConStock.contains(_centroSeleccionado)) {
       _centroSeleccionado = null;
       _horaSeleccionada = null;
     }
-    _centroSeleccionado ??= centrosConStock.isNotEmpty
-        ? centrosConStock.first
-        : null;
+    _centroSeleccionado ??= centrosConStock.isNotEmpty ? centrosConStock.first : null;
 
     List<CitaVacunacion> misCitas = [];
     for (var c in db.centros) {
-      misCitas.addAll(
-        c.citasAgendadas.where((cita) => cita.rutPaciente == miPerfil.rut),
-      );
+      misCitas.addAll(c.citasAgendadas.where((cita) => cita.rutPaciente == miPerfil.rut));
     }
 
-    List<TimeOfDay> horasDisponibles = _centroSeleccionado != null
-        ? _generarBloquesHorarios(_centroSeleccionado!.horarioAtencion)
-        : [];
+    List<TimeOfDay> horasDisponibles = _centroSeleccionado != null ? _generarBloquesHorarios(_centroSeleccionado!.horarioAtencion) : [];
 
     return ListView(
+      physics: const BouncingScrollPhysics(),
       children: [
         DropdownButtonFormField<Campana>(
           value: _campanaSeleccionada,
-          decoration: const InputDecoration(
-            labelText: "Seleccionar Campaña",
-            border: OutlineInputBorder(),
-          ),
-          items: db.campanas
-              .map(
-                (c) => DropdownMenuItem(
-                  value: c,
-                  child: Text("${c.nombre} (${c.vacuna.nombre})"),
-                ),
-              )
-              .toList(),
-          onChanged: (val) => setState(() {
-            _campanaSeleccionada = val;
-            _tramoSeleccionado = val!.tramos.isNotEmpty
-                ? val.tramos.first
-                : null;
-          }),
+          decoration: InputDecoration(labelText: "Seleccionar Campaña", prefixIcon: Icon(Icons.campaign_rounded, color: Theme.of(context).colorScheme.primary)),
+          items: db.campanas.map((c) => DropdownMenuItem(value: c, child: Text("${c.nombre} (${c.vacuna.nombre})"))).toList(),
+          onChanged: (val) => setState(() { _campanaSeleccionada = val; _tramoSeleccionado = val!.tramos.isNotEmpty ? val.tramos.first : null; }),
         ),
         const SizedBox(height: 16),
         if (_campanaSeleccionada!.tramos.isNotEmpty)
           DropdownButtonFormField<TramoCampana>(
             value: _tramoSeleccionado,
-            decoration: const InputDecoration(
-              labelText: "Seleccionar Tramo",
-              border: OutlineInputBorder(),
-            ),
-            items: _campanaSeleccionada!.tramos
-                .map(
-                  (t) => DropdownMenuItem(
-                    value: t,
-                    child: Text(
-                      "${t.nombreTramo} (Prioridad: ${t.poblacionObjetivo})",
-                    ),
-                  ),
-                )
-                .toList(),
+            decoration: InputDecoration(labelText: "Seleccionar Tramo", prefixIcon: Icon(Icons.groups_rounded, color: Theme.of(context).colorScheme.primary)),
+            items: _campanaSeleccionada!.tramos.map((t) => DropdownMenuItem(value: t, child: Text("${t.nombreTramo} (Prioridad: ${t.poblacionObjetivo})"))).toList(),
             onChanged: (val) => setState(() => _tramoSeleccionado = val),
           ),
         const SizedBox(height: 16),
         if (centrosConStock.isEmpty)
-          const Text(
-            "⚠️ No hay sedes disponibles con stock.",
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.errorContainer, borderRadius: BorderRadius.circular(15)),
+            child: Row(
+              children: [
+                Icon(Icons.warning_rounded, color: Theme.of(context).colorScheme.error),
+                const SizedBox(width: 12),
+                Text("No hay sedes disponibles con stock.", style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold)),
+              ],
+            ),
           )
         else
           DropdownButtonFormField<CentroVacunacion>(
             value: _centroSeleccionado,
-            decoration: const InputDecoration(
-              labelText: "Sedes Disponibles",
-              border: OutlineInputBorder(),
-            ),
-            items: centrosConStock
-                .map(
-                  (c) => DropdownMenuItem(
-                    value: c,
-                    child: Text("${c.nombre} (Horario: ${c.horarioAtencion})"),
-                  ),
-                )
-                .toList(),
-            onChanged: (val) => setState(() {
-              _centroSeleccionado = val;
-              _horaSeleccionada = null;
-            }),
+            decoration: InputDecoration(labelText: "Sedes Disponibles", prefixIcon: Icon(Icons.local_hospital_rounded, color: Theme.of(context).colorScheme.primary)),
+            items: centrosConStock.map((c) => DropdownMenuItem(value: c, child: Text("${c.nombre} (Horario: ${c.horarioAtencion})"))).toList(),
+            onChanged: (val) => setState(() { _centroSeleccionado = val; _horaSeleccionada = null; }),
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
+        
+        // SELECTOR DE FECHA Y HORA
         Row(
           children: [
             Expanded(
-              flex: 2,
-              child: Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Colors.grey.shade400),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.calendar_month),
-                  title: Text(
-                    _fechaSeleccionada == null
-                        ? "Seleccionar Fecha"
-                        : DateFormatter.formatDateOnly(_fechaSeleccionada!),
+              flex: 3,
+              child: InkWell(
+                onTap: () => _seleccionarFecha(context),
+                borderRadius: BorderRadius.circular(15),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
                   ),
-                  onTap: () => _seleccionarFecha(context),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_month_rounded, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Text(
+                        _fechaSeleccionada == null ? "Seleccionar Fecha" : DateFormatter.formatDateOnly(_fechaSeleccionada!),
+                        style: TextStyle(fontSize: 16, color: _fechaSeleccionada == null ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onBackground),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
-              flex: 1,
+              flex: 2,
               child: DropdownButtonFormField<TimeOfDay>(
                 value: _horaSeleccionada,
-                decoration: const InputDecoration(
-                  labelText: "Hora",
-                  border: OutlineInputBorder(),
-                ),
-                disabledHint: const Text("Elija Día"),
-                items: horasDisponibles
-                    .map(
-                      (h) => DropdownMenuItem(
-                        value: h,
-                        child: Text(
-                          "${h.hour.toString().padLeft(2, '0')}:${h.minute.toString().padLeft(2, '0')}",
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _fechaSeleccionada == null
-                    ? null
-                    : (val) => setState(() => _horaSeleccionada = val),
+                decoration: InputDecoration(labelText: "Hora", prefixIcon: Icon(Icons.access_time_rounded, color: Theme.of(context).colorScheme.primary)),
+                disabledHint: const Text("Elija Sede"),
+                items: horasDisponibles.map((h) => DropdownMenuItem(value: h, child: Text("${h.hour.toString().padLeft(2,'0')}:${h.minute.toString().padLeft(2,'0')}"))).toList(),
+                onChanged: _fechaSeleccionada == null ? null : (val) => setState(() => _horaSeleccionada = val),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 45),
-          ),
-          onPressed:
-              (_tramoSeleccionado == null ||
-                  _centroSeleccionado == null ||
-                  _fechaSeleccionada == null ||
-                  _horaSeleccionada == null)
-              ? null
-              : () {
-                  bool ok = _tramoSeleccionado!.validarPrioridadPaciente(
-                    miPerfil,
-                  );
-                  if (ok) {
-                    _agendar(miPerfil);
-                  } else {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text("Advertencia de Prioridad"),
-                        content: const Text(
-                          "No cumples con los criterios. Tu hora quedará sujeta a reasignación.",
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text("Cancelar"),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              _agendar(miPerfil);
-                            },
-                            child: const Text("Agendar de todas formas"),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
-          child: const Text("Confirmar Cita Personal"),
+        const SizedBox(height: 32),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.check_circle_outline_rounded),
+          onPressed: (_tramoSeleccionado == null || _centroSeleccionado == null || _fechaSeleccionada == null || _horaSeleccionada == null) ? null : () {
+            bool ok = _tramoSeleccionado!.validarPrioridadPaciente(miPerfil);
+            if (ok) {
+              _agendar(miPerfil);
+            } else {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text("Advertencia de Prioridad"),
+                  content: const Text("No cumples con los criterios. Tu hora quedará sujeta a reasignación."),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+                    ElevatedButton(onPressed: () { Navigator.pop(ctx); _agendar(miPerfil); }, child: const Text("Agendar de todas formas"))
+                  ],
+                )
+              );
+            }
+          },
+          label: const Text("Confirmar Cita Personal"),
         ),
+        
+        const SizedBox(height: 40),
+        const Divider(height: 1),
         const SizedBox(height: 24),
-        const Text(
-          "Mis Citas Programadas:",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        
+        Row(
+          children: [
+            Icon(Icons.history_rounded, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            Text("Mis Citas Programadas", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
+        
         misCitas.isEmpty
-            ? const Text("No registras citas activas.")
+            ? Text("No registras citas activas.", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))
             : ListView.builder(
-                shrinkWrap:
-                    true, // Para evitar errores dentro del ListView padre
+                shrinkWrap: true, 
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: misCitas.length,
                 itemBuilder: (context, index) {
                   var c = misCitas[index];
-                  String centroN = db.centros
-                      .firstWhere((x) => x.idCentro == c.idCentro)
-                      .nombre;
-                  return Card(
+                  String centroN = db.centros.firstWhere((x) => x.idCentro == c.idCentro).nombre;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
                     child: ListTile(
-                      leading: const Icon(
-                        Icons.calendar_today,
-                        color: Colors.teal,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+                        child: Icon(Icons.calendar_month_rounded, color: Theme.of(context).colorScheme.primary),
                       ),
-                      title: Text(DateFormatter.formatDateTime(c.fechaHora)),
-                      subtitle: Text("Sede: $centroN\nEstado: ${c.estado}"),
+                      title: Text(DateFormatter.formatDateTime(c.fechaHora), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text("Sede: $centroN", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(c.estado, style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.w600, fontSize: 12)),
+                      ),
                     ),
                   );
                 },
-              ),
+              )
       ],
     );
   }
 
   void _agendar(Paciente perfil) {
-    DateTime fechaHoraFinal = DateTime(
-      _fechaSeleccionada!.year,
-      _fechaSeleccionada!.month,
-      _fechaSeleccionada!.day,
-      _horaSeleccionada!.hour,
-      _horaSeleccionada!.minute,
-    );
-    var cita = _centroSeleccionado!.crearCita(
-      fechaHoraFinal,
-      perfil,
-      _tramoSeleccionado!.idTramo,
-    );
+    DateTime fechaHoraFinal = DateTime(_fechaSeleccionada!.year, _fechaSeleccionada!.month, _fechaSeleccionada!.day, _horaSeleccionada!.hour, _horaSeleccionada!.minute);
+    var cita = _centroSeleccionado!.crearCita(fechaHoraFinal, perfil, _tramoSeleccionado!.idTramo);
     if (cita != null) {
-      CustomDialogs.showMessage(
-        context,
-        "Éxito",
-        "Cita tomada de forma exitosa.",
-      );
-      setState(() {
-        _fechaSeleccionada = null;
-        _horaSeleccionada = null;
-      });
+      CustomDialogs.showMessage(context, "Éxito", "Cita tomada de forma exitosa.");
+      setState(() { _fechaSeleccionada = null; _horaSeleccionada = null; });
     }
   }
 }

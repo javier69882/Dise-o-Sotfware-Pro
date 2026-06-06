@@ -23,7 +23,12 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
     _centroSeleccionado ??= db.centros.isNotEmpty ? db.centros.first : null;
 
     if (_centroSeleccionado == null) {
-      return const Center(child: Text("No existen sedes registradas."));
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Text("No existen sedes registradas en el sistema.", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        ),
+      );
     }
 
     // 1. Citas por atender
@@ -31,99 +36,236 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
         .where((c) => c.estado == "Programada")
         .toList();
 
-    // 2. Registros completados en ESTA sede (Filtrado de la tabla relacional)
+    // 2. Registros completados en sede específica para el historial
     var registrosSede = db.historialRegistros
         .where((reg) => reg.idCentro == _centroSeleccionado!.idCentro)
         .toList();
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
         children: [
-          const Text("Módulo de Inmunización", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          
-          DropdownButtonFormField<CentroVacunacion>(
-            value: _centroSeleccionado,
-            decoration: const InputDecoration(labelText: "Punto de Atención Actual", border: OutlineInputBorder()),
-            items: db.centros.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
-            onChanged: (val) => setState(() => _centroSeleccionado = val),
+          // ENCABEZADO
+          Container(
+            padding: const EdgeInsets.fromLTRB(32, 50, 32, 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Hola, ${db.usuarioActivo?.nombres ?? 'Enfermer@'} 👋",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).colorScheme.primary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "Módulo de Inmunización • ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          
-          // SECCIÓN 1: PENDIENTES
-          Text("Pacientes en Espera (${citasPendientes.length})", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange)),
-          const SizedBox(height: 8),
-          
-          Expanded(
-            flex: 4,
-            child: citasPendientes.isEmpty
-                ? const Card(child: Center(child: Text("No hay citas programadas para hoy.", style: TextStyle(fontStyle: FontStyle.italic))))
-                : ListView.builder(
-                    itemCount: citasPendientes.length,
-                    itemBuilder: (context, index) {
-                      var cita = citasPendientes[index];
-                      var paciente = db.usuarios.firstWhere((u) => u.rut == cita.rutPaciente) as Paciente;
 
-                      return Card(
-                        child: ListTile(
-                          leading: const CircleAvatar(child: Icon(Icons.person)),
-                          title: Text("${paciente.nombres} ${paciente.apellidos} (${paciente.rut})"),
-                          subtitle: Text("Grupo: ${paciente.grupoRiesgo}\nPlanificado: ${DateFormatter.formatDateTime(cita.fechaHora)}"),
-                          trailing: ElevatedButton.icon(
-                            icon: const Icon(Icons.check_circle),
-                            label: const Text("Inmunizar"),
-                            onPressed: () {
-                              // Llamada unificada a la Fachada
-                              String resultado = FachadaRegistroVacunacion.procesarVacunacion(
-                                cita: cita,
-                                paciente: paciente,
-                                centro: _centroSeleccionado!,
-                                rutProfesional: db.usuarioActivo!.rut,
-                                observaciones: _obsCtrl.text
+          // CUERPO PRINCIPAL
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<CentroVacunacion>(
+                    value: _centroSeleccionado,
+                    decoration: InputDecoration(
+                      labelText: "Punto de Atención Actual", 
+                      prefixIcon: Icon(Icons.local_hospital_rounded, color: Theme.of(context).colorScheme.primary),
+                      fillColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+                    ),
+                    items: db.centros.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
+                    onChanged: (val) => setState(() => _centroSeleccionado = val),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // SECCIÓN 1: PENDIENTES
+                  Row(
+                    children: [
+                      Icon(Icons.people_alt_rounded, color: Theme.of(context).colorScheme.tertiary),
+                      const SizedBox(width: 8),
+                      Text("Pacientes en Espera (${citasPendientes.length})", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Expanded(
+                    flex: 4,
+                    child: citasPendientes.isEmpty
+                        ? Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.coffee_rounded, size: 48, color: Theme.of(context).colorScheme.outlineVariant),
+                                const SizedBox(height: 16),
+                                Text("No hay citas programadas para hoy.", style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: citasPendientes.length,
+                            itemBuilder: (context, index) {
+                              var cita = citasPendientes[index];
+                              var paciente = db.usuarios.firstWhere((u) => u.rut == cita.rutPaciente) as Paciente;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(15),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    )
+                                  ],
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.tertiary.withOpacity(0.2), shape: BoxShape.circle),
+                                    child: Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.tertiary), // Se usa el color terciario para llamar a la acción
+                                  ),
+                                  title: Text("${paciente.nombres} ${paciente.apellidos} (${paciente.rut})", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text("Grupo: ${paciente.grupoRiesgo}\nPlanificado: ${DateFormatter.formatDateTime(cita.fechaHora)}", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
+                                  ),
+                                  trailing: ElevatedButton.icon(
+                                    icon: const Icon(Icons.vaccines_rounded),
+                                    label: const Text("Inmunizar"),
+                                    style: ElevatedButton.styleFrom(
+                                      elevation: 0,
+                                      minimumSize: const Size(0, 40),
+                                    ),
+                                    onPressed: () {
+                                      // Llamada unificada a la Fachada
+                                      String resultado = FachadaRegistroVacunacion.procesarVacunacion(
+                                        cita: cita,
+                                        paciente: paciente,
+                                        centro: _centroSeleccionado!,
+                                        rutProfesional: db.usuarioActivo!.rut,
+                                        observaciones: _obsCtrl.text
+                                      );
+                                      
+                                      if (resultado.startsWith("Éxito")) {
+                                        CustomDialogs.showSnackBar(context, resultado);
+                                        setState(() {});
+                                      } else {
+                                        CustomDialogs.showMessage(context, "Error de Validación", resultado);
+                                      }
+                                    },
+                                  ),
+                                ),
                               );
-                              
-                              if (resultado.startsWith("Éxito")) {
-                                CustomDialogs.showSnackBar(context, resultado);
-                                setState(() {}); // Actualiza ambas listas al unísono
-                              } else {
-                                CustomDialogs.showMessage(context, "Error de Validación", resultado);
-                              }
                             },
                           ),
-                        ),
-                      );
-                    },
                   ),
-          ),
-          const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
 
-          // SECCIÓN 2: HISTORIAL LOGUEADO
-          Text("Historial de Vacunaciones Realizadas (Sede)", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.teal)),
-          const SizedBox(height: 8),
-
-          Expanded(
-            flex: 3,
-            child: registrosSede.isEmpty
-                ? const Card(child: Center(child: Text("Aún no se registran vacunaciones en este turno.", style: TextStyle(fontStyle: FontStyle.italic))))
-                : ListView.builder(
-                    itemCount: registrosSede.length,
-                    itemBuilder: (context, index) {
-                      var reg = registrosSede[index];
-                      var paciente = db.usuarios.firstWhere((u) => u.rut == reg.rutPaciente) as Paciente;
-                      
-                      return Card(
-                        color: Colors.teal.shade50, // Resaltar visualmente los completados
-                        child: ListTile(
-                          leading: const Icon(Icons.assignment_turned_in, color: Colors.teal),
-                          title: Text("${paciente.nombres} ${paciente.apellidos}"),
-                          subtitle: Text("ID Registro: ${reg.idRegistro}\nFecha Aplicación: ${DateFormatter.formatDateTime(reg.fechaHora)}"),
-                          trailing: Text("RUT: ${paciente.rut}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      );
-                    },
+                  // SECCIÓN 2: HISTORIAL LOGUEADO
+                  Row(
+                    children: [
+                      Icon(Icons.assignment_turned_in_rounded, color: Theme.of(context).colorScheme.secondary),
+                      const SizedBox(width: 8),
+                      Text("Historial de Vacunaciones Realizadas", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+                    ],
                   ),
+                  const SizedBox(height: 16),
+
+                  Expanded(
+                    flex: 3,
+                    child: registrosSede.isEmpty
+                        ? Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
+                            ),
+                            child: Center(child: Text("Aún no se registran vacunaciones en este turno.", style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant))),
+                          )
+                        : ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: registrosSede.length,
+                            itemBuilder: (context, index) {
+                              var reg = registrosSede[index];
+                              var paciente = db.usuarios.firstWhere((u) => u.rut == reg.rutPaciente) as Paciente;
+                              
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  // Usamos secondaryContainer para los ítems ya procesados con éxito
+                                  color: Theme.of(context).colorScheme.secondaryContainer, 
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                  leading: Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.secondary, size: 32),
+                                  title: Text("${paciente.nombres} ${paciente.apellidos}", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSecondaryContainer)),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text("ID Registro: ${reg.idRegistro}\nFecha Aplicación: ${DateFormatter.formatDateTime(reg.fechaHora)}", style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(0.8), height: 1.4)),
+                                  ),
+                                  trailing: Text("RUT: ${paciente.rut}", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSecondaryContainer)),
+                                ),
+                              );
+                            },
+                          ),
+                  )
+                ],
+              ),
+            ),
           )
         ],
       ),

@@ -25,34 +25,117 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     var admin = db.usuarioActivo as Administrador;
-    return DefaultTabController(
-      length: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const TabBar(
-              tabs: [
-                Tab(icon: Icon(Icons.campaign), text: "Gestión de Campañas"),
-                Tab(icon: Icon(Icons.local_shipping), text: "Inventario por Sede"),
+    
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          // ENCABEZADO
+          Container(
+            padding: const EdgeInsets.fromLTRB(32, 50, 32, 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
               ],
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _buildTabCampanas(admin),
-                  _buildTabInventarioSedes(),
-                ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Hola, ${admin.nombres} 👋",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).colorScheme.primary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "Panel de Administración • ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // CUERPO PRINCIPAL (Pestañas y Contenido)
+          Expanded(
+            child: DefaultTabController(
+              length: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // PESTAÑAS
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: const TabBar(
+                        tabs: [
+                          Tab(icon: Icon(Icons.campaign_rounded), text: "Gestión de Campañas"),
+                          Tab(icon: Icon(Icons.local_shipping_rounded), text: "Inventario por Sede"),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // CONTENIDO DE LAS PESTAÑAS
+                    Expanded(
+                      child: TabBarView(
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          _buildTabCampanas(admin),
+                          _buildTabInventarioSedes(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  // VISTA: PESTAÑA DE CAMPAÑAS
   Widget _buildTabCampanas(Administrador admin) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,57 +143,94 @@ class _AdminDashboardState extends State<AdminDashboard> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Campañas Activas", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Campañas Activas", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
             ElevatedButton.icon(
               onPressed: () => _mostrarFormularioCampana(admin),
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add_rounded),
               label: const Text("Nueva Campaña"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.tertiary,
+                foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                elevation: 0,
+                minimumSize: const Size(0, 48), 
+              ),
             )
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         Expanded(
           child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
             itemCount: db.campanas.length,
             itemBuilder: (context, index) {
               var campana = db.campanas[index];
               String tipoStr = campana.empresaAsociada == null ? "Pública" : "Empresa: ${campana.empresaAsociada!.razonSocial}";
-              return Card(
-                child: ExpansionTile(
-                  title: Text(campana.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("Avance: ${campana.calcularAvanceGlobal().toStringAsFixed(1)}% | Tipo: $tipoStr | Vacuna: ${campana.vacuna.nombre}"),
-                  children: [
-                    const Divider(),
-                    const Text("Tramos de Vacunación", style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...campana.tramos.map((t) => ListTile(
-                      leading: const Icon(Icons.group),
-                      title: Text(t.nombreTramo),
-                      subtitle: Text("Objetivo: ${t.poblacionObjetivo} | Prioridad: ${t.nivelPrioridad}\nFechas: ${DateFormatter.formatDateOnly(t.fechaInicio)} al ${DateFormatter.formatDateOnly(t.fechaFin)}"),
-                    )),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () {
-                              admin.solicitarReporteEfectos(campana);
-                              var reporte = campana.generarReporteEfectos();
-                              CustomDialogs.showMessage(context, "Reporte de Efectos", reporte.toString());
-                            },
-                            icon: const Icon(Icons.analytics),
-                            label: const Text("Reporte Efectos"),
-                          ),
-                          const SizedBox(width: 10),
-                          ElevatedButton.icon(
-                            onPressed: () => _mostrarFormularioTramo(campana),
-                            icon: const Icon(Icons.add_task),
-                            label: const Text("Añadir Tramo"),
-                          ),
-                        ],
-                      ),
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     )
                   ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: ExpansionTile(
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+                      child: Icon(Icons.campaign_rounded, color: Theme.of(context).colorScheme.primary),
+                    ),
+                    title: Text(campana.nombre, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+                    subtitle: Text("Avance: ${campana.calcularAvanceGlobal().toStringAsFixed(1)}% | Tipo: $tipoStr", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    children: [
+                      const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Tramos de Vacunación", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+                        ),
+                      ),
+                      ...campana.tramos.map((t) => ListTile(
+                        leading: Icon(Icons.group_rounded, color: Theme.of(context).colorScheme.secondary),
+                        title: Text(t.nombreTramo),
+                        subtitle: Text("Objetivo: ${t.poblacionObjetivo} | Prioridad: ${t.nivelPrioridad}\nFechas: ${DateFormatter.formatDateOnly(t.fechaInicio)} al ${DateFormatter.formatDateOnly(t.fechaFin)}"),
+                      )),
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () {
+                                admin.solicitarReporteEfectos(campana);
+                                var reporte = campana.generarReporteEfectos();
+                                CustomDialogs.showMessage(context, "Reporte de Efectos", reporte.toString());
+                              },
+                              icon: Icon(Icons.analytics_rounded, color: Theme.of(context).colorScheme.primary),
+                              label: Text("Reporte Efectos", style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton.icon(
+                              onPressed: () => _mostrarFormularioTramo(campana),
+                              icon: const Icon(Icons.add_task_rounded),
+                              label: const Text("Añadir Tramo"),
+                              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
                 ),
               );
             },
@@ -120,6 +240,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  // VISTA: PESTAÑA DE INVENTARIO
   Widget _buildTabInventarioSedes() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,70 +248,110 @@ class _AdminDashboardState extends State<AdminDashboard> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Sedes de Vacunación", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Sedes de Vacunación", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
             Row(
               children: [
                 ElevatedButton.icon(
                   onPressed: _mostrarFormularioCrearSede,
-                  icon: const Icon(Icons.add_business),
+                  icon: const Icon(Icons.add_business_rounded),
                   label: const Text("Nueva Sede"),
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    minimumSize: const Size(0, 48), 
+                  ),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: _mostrarFormularioCargaStock,
-                  icon: const Icon(Icons.inventory),
+                  icon: const Icon(Icons.inventory_2_rounded),
                   label: const Text("Cargar Stock"),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE0F2F1)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                    elevation: 0,
+                    minimumSize: const Size(0, 48),
+                  ),
                 ),
               ],
             )
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         Expanded(
           child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
             itemCount: db.centros.length,
             itemBuilder: (context, index) {
               var centro = db.centros[index];
-              String extraInfo = "";
-              if (centro is CentroMedico) {
-                extraInfo = "Establecimiento: ${centro.tipoEstablecimiento}";
-              } else if (centro is CentroNoMedicoAdaptado) {
-                extraInfo = "Ubicación: ${centro.ubicacionEstablecimiento}";
-              }
+              String extraInfo = centro is CentroMedico 
+                ? "Establecimiento: ${centro.tipoEstablecimiento}" 
+                : "Ubicación: ${(centro as CentroNoMedicoAdaptado).ubicacionEstablecimiento}";
 
-              return Card(
-                child: ExpansionTile(
-                  leading: const Icon(Icons.apartment, color: Colors.teal),
-                  title: Text(centro.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("Ubicación: ${centro.comuna}, ${centro.region} | $extraInfo"),
-                  children: [
-                    const Divider(),
-                    ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.schedule),
-                      title: Text("Horario: ${centro.horarioAtencion} | Capacidad Diaria: ${centro.capacidadDiaria} personas"),
-                    ),
-                    const Divider(),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4.0),
-                      child: Text("Lotes y Vacunas Almacenadas", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                    ),
-                    if (centro.inventarios.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text("No hay stock disponible en esta sede actualmente.", style: TextStyle(fontStyle: FontStyle.italic)),
-                      )
-                    else
-                      ...centro.inventarios.map((inv) => ListTile(
-                        leading: const Icon(Icons.vaccines, color: Colors.teal),
-                        title: Text("${inv.vacuna.nombre} (Lote: ${inv.lote})"),
-                        subtitle: Text("Dosis Disponibles: ${inv.cantidadDisponible} | Vence: ${DateFormatter.formatDateOnly(inv.fechaVencimiento)}"),
-                        trailing: inv.estaVencida()
-                            ? const Chip(label: Text("VENCIDO"), backgroundColor: Colors.redAccent)
-                            : Chip(label: Text("${inv.cantidadDisponible} dosis")),
-                      )),
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
                   ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: ExpansionTile(
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+                      child: Icon(Icons.apartment_rounded, color: Theme.of(context).colorScheme.primary),
+                    ),
+                    title: Text(centro.nombre, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+                    subtitle: Text("${centro.comuna}, ${centro.region} | $extraInfo", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    children: [
+                      const Divider(),
+                      ListTile(
+                        dense: true,
+                        leading: Icon(Icons.schedule_rounded, color: Theme.of(context).colorScheme.secondary),
+                        title: Text("Horario: ${centro.horarioAtencion} | Capacidad Diaria: ${centro.capacidadDiaria} personas"),
+                      ),
+                      const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Lotes y Vacunas Almacenadas", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        ),
+                      ),
+                      if (centro.inventarios.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text("No hay stock disponible en esta sede actualmente.", style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        )
+                      else
+                        ...centro.inventarios.map((inv) => ListTile(
+                          leading: Icon(Icons.vaccines_rounded, color: Theme.of(context).colorScheme.primary),
+                          title: Text("${inv.vacuna.nombre} (Lote: ${inv.lote})"),
+                          subtitle: Text("Disponibles: ${inv.cantidadDisponible} | Vence: ${DateFormatter.formatDateOnly(inv.fechaVencimiento)}"),
+                          trailing: inv.estaVencida()
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.errorContainer, borderRadius: BorderRadius.circular(20)),
+                                  child: Text("VENCIDO", style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold, fontSize: 12)),
+                                )
+                              : Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)),
+                                  child: Text("${inv.cantidadDisponible} dosis", style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold, fontSize: 12)),
+                                ),
+                        )),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
                 ),
               );
             },
@@ -200,7 +361,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // FORMULARIO DINÁMICO HU-11: Crear Nueva Sede
+  // LÓGICA DE DIÁLOGOS Y FORMULARIOS
   void _mostrarFormularioCrearSede() {
     final formKey = GlobalKey<FormState>();
     final nombreCtrl = TextEditingController();
@@ -210,7 +371,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final capacidadCtrl = TextEditingController();
     final horarioCtrl = TextEditingController(text: "08:30 - 17:30");
     
-    // Campos específicos de subclases
     final tipoEstablecimientoCtrl = TextEditingController();
     final ubicacionEstablecimientoCtrl = TextEditingController();
 
@@ -241,46 +401,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         decoration: const InputDecoration(labelText: "Nombre de la Sede"),
                         validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: direccionCtrl,
                         decoration: const InputDecoration(labelText: "Dirección"),
                         validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: comunaCtrl,
                         decoration: const InputDecoration(labelText: "Comuna"),
                         validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: regionCtrl,
                         decoration: const InputDecoration(labelText: "Región"),
                         validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: horarioCtrl,
                         decoration: const InputDecoration(labelText: "Horario de Atención"),
                         validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                       ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: capacidadCtrl,
-                        decoration: const InputDecoration(labelText: "Capacidad de Atención Diaria"),
+                        decoration: const InputDecoration(labelText: "Capacidad Diaria"),
                         keyboardType: TextInputType.number,
                         validator: (v) => v!.isEmpty || int.tryParse(v) == null ? "Ingrese un número válido" : null,
                       ),
                       const SizedBox(height: 16),
-                      
-                      // Campos condicionales según HU-11
                       if (tipoSedeSeleccionado == "Médico") ...[
                         TextFormField(
                           controller: tipoEstablecimientoCtrl,
-                          decoration: const InputDecoration(labelText: "Tipo de Establecimiento (ej: Hospital, SAPU)", border: OutlineInputBorder()),
-                          validator: (v) => v!.isEmpty ? "Especifique el tipo de establecimiento médico" : null,
+                          decoration: const InputDecoration(labelText: "Tipo (ej: Hospital, SAPU)"),
+                          validator: (v) => v!.isEmpty ? "Especifique" : null,
                         ),
                       ] else ...[
                         TextFormField(
                           controller: ubicacionEstablecimientoCtrl,
-                          decoration: const InputDecoration(labelText: "Ubicación del Establecimiento (ej: Gimnasio, Escuela)", border: OutlineInputBorder()),
-                          validator: (v) => v!.isEmpty ? "Especifique el recinto adaptado" : null,
+                          decoration: const InputDecoration(labelText: "Ubicación (ej: Gimnasio)"),
+                          validator: (v) => v!.isEmpty ? "Especifique" : null,
                         ),
                       ],
                     ],
@@ -326,7 +489,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       });
 
                       Navigator.pop(context);
-                      CustomDialogs.showSnackBar(context, "Sede '${nombreCtrl.text}' registrada con éxito");
+                      CustomDialogs.showSnackBar(context, "Sede '${nombreCtrl.text}' registrada");
                     }
                   },
                   child: const Text("Registrar Sede"),
@@ -354,7 +517,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text("Cargar Stock en Sede"),
+              title: const Text("Cargar Stock"),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -363,7 +526,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       DropdownButtonFormField<CentroVacunacion>(
                         value: centroSeleccionado,
-                        decoration: const InputDecoration(labelText: "Seleccionar Sede Destino"),
+                        decoration: const InputDecoration(labelText: "Sede Destino"),
                         items: db.centros.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
                         onChanged: (val) => setStateDialog(() => centroSeleccionado = val),
                       ),
@@ -377,20 +540,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: loteCtrl,
-                        decoration: const InputDecoration(labelText: "Código de Lote (Ej: LOT-2026)"),
-                        validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
+                        decoration: const InputDecoration(labelText: "Código de Lote"),
+                        validator: (v) => v!.isEmpty ? "Obligatorio" : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: cantidadCtrl,
                         decoration: const InputDecoration(labelText: "Cantidad de Dosis"),
                         keyboardType: TextInputType.number,
-                        validator: (v) => v!.isEmpty || int.tryParse(v) == null ? "Ingrese un número válido" : null,
+                        validator: (v) => v!.isEmpty || int.tryParse(v) == null ? "Inválido" : null,
                       ),
                       const SizedBox(height: 16),
                       ListTile(
-                        title: Text("Fecha de Vencimiento: ${DateFormatter.formatDateOnly(fechaVencimiento)}"),
-                        trailing: const Icon(Icons.calendar_today),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+                        title: Text("Vence: ${DateFormatter.formatDateOnly(fechaVencimiento)}"),
+                        trailing: const Icon(Icons.calendar_today_rounded),
                         onTap: () async {
                           var picked = await showDatePicker(
                             context: context,
@@ -422,7 +586,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         centroSeleccionado!.inventarios.add(nuevoInventario);
                       });
                       Navigator.pop(context);
-                      CustomDialogs.showSnackBar(context, "Stock cargado con éxito en ${centroSeleccionado!.nombre}");
+                      CustomDialogs.showSnackBar(context, "Stock cargado con éxito");
                     }
                   },
                   child: const Text("Cargar Dosis"),
@@ -484,7 +648,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       );
                       setState(() { db.campanas.add(nuevaCampana); });
                       Navigator.pop(context);
-                      CustomDialogs.showMessage(context, "Éxito", "La campaña ha sido creada correctamente.");
+                      CustomDialogs.showMessage(context, "Éxito", "La campaña ha sido creada.");
                     }
                   },
                   child: const Text("Guardar"),
@@ -537,7 +701,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         controller: prioridadCtrl,
                         decoration: const InputDecoration(labelText: "Nivel de Prioridad"),
                         keyboardType: TextInputType.number,
-                        validator: (v) => v!.isEmpty || int.tryParse(v) == null ? "Ingrese un número válido" : null,
+                        validator: (v) => v!.isEmpty || int.tryParse(v) == null ? "Inválido" : null,
                       ),
                     ],
                   ),
