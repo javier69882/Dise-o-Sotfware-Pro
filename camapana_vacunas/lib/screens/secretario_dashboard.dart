@@ -41,7 +41,8 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
       TimeOfDay actual = TimeOfDay(hour: horaInicio, minute: minInicio);
       TimeOfDay limite = TimeOfDay(hour: horaFin, minute: minFin);
 
-      while (actual.hour < limite.hour || (actual.hour == limite.hour && actual.minute < limite.minute)) {
+      while (actual.hour < limite.hour ||
+          (actual.hour == limite.hour && actual.minute < limite.minute)) {
         bloques.add(actual);
         int nextMin = actual.minute + 30;
         int nextHour = actual.hour;
@@ -80,6 +81,7 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
     final nombresCtrl = TextEditingController();
     final apellidosCtrl = TextEditingController();
     final correoCtrl = TextEditingController();
+    final telefonoCtrl = TextEditingController();
     String grupoRiesgo = "Público General";
 
     showDialog(
@@ -97,8 +99,19 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                     children: [
                       TextFormField(
                         controller: rutCtrl,
-                        decoration: const InputDecoration(labelText: "RUT Paciente"),
-                        validator: (v) => v!.isEmpty ? "Obligatorio" : null,
+                        decoration: const InputDecoration(
+                          labelText: "RUT Paciente",
+                          hintText: '12.345.678-9',
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.isEmpty)
+                            return 'Este campo es obligatorio.';
+                          if (!RegExp(
+                            r"\d{1,2}\.\d{3}\.\d{3}-[\dKk]$",
+                          ).hasMatch(value))
+                            return 'No tiene el formato solicitado';
+                          return null;
+                        },
                       ),
                       TextFormField(
                         controller: nombresCtrl,
@@ -107,13 +120,52 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                       ),
                       TextFormField(
                         controller: apellidosCtrl,
-                        decoration: const InputDecoration(labelText: "Apellidos"),
+                        decoration: const InputDecoration(
+                          labelText: "Apellidos",
+                        ),
                         validator: (v) => v!.isEmpty ? "Obligatorio" : null,
                       ),
                       TextFormField(
                         controller: correoCtrl,
-                        decoration: const InputDecoration(labelText: "Correo Electrónico"),
-                        validator: (v) => v!.isEmpty ? "Obligatorio" : null,
+                        decoration: const InputDecoration(
+                          labelText: "Correo Electrónico",
+                          hintText: 'correo@address.cl',
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.isEmpty)
+                            return 'Este campo es obligatorio.';
+                          if (!RegExp(
+                            r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&ñ'*+-/=?^_`{|}~]+@[a-zA-Z0-9ñ]+\.[a-zA-Zñ]+",
+                          ).hasMatch(value)) {
+                            return 'No tiene formato de correo válido';
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: telefonoCtrl,
+                        decoration: InputDecoration(
+                          hintText: '+56912345678 o 912345678',
+                          labelText: 'Teléfono de contacto',
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.isEmpty)
+                            return 'Este campo es obligatorio.';
+                          if (value[0] == '+') {
+                            if (!RegExp(r'^\+[0-9]+$').hasMatch(value)) {
+                              return "Asegúrate de que solo hay números después del +";
+                            } else if (value.length < 12 || value.length > 13) {
+                              return "Chequea el largo";
+                            }
+                          } else {
+                            if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                              return "Asegúrate de que solo hay números";
+                            } else if (value.length < 8 || value.length > 9) {
+                              return "Chequea el largo";
+                            }
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
@@ -122,14 +174,23 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                           labelText: "Grupo de Riesgo",
                           border: OutlineInputBorder(),
                         ),
-                        items: [
-                          "Adultos Mayores",
-                          "Crónicos",
-                          "Embarazadas",
-                          "Jovenes Sanos",
-                          "Público General",
-                        ].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                        onChanged: (val) => setStateDialog(() => grupoRiesgo = val!),
+                        items:
+                            [
+                                  "Adultos Mayores",
+                                  "Crónicos",
+                                  "Embarazadas",
+                                  "Jovenes Sanos",
+                                  "Público General",
+                                ]
+                                .map(
+                                  (g) => DropdownMenuItem(
+                                    value: g,
+                                    child: Text(g),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (val) =>
+                            setStateDialog(() => grupoRiesgo = val!),
                       ),
                     ],
                   ),
@@ -148,7 +209,7 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                         nombres: nombresCtrl.text,
                         apellidos: apellidosCtrl.text,
                         correo: correoCtrl.text,
-                        telefono: "S/N",
+                        telefono: telefonoCtrl.text,
                         fechaNacimiento: DateTime(1990, 1, 1),
                         rutSecretarioCreador: db.usuarioActivo!.rut,
                         prevision: "Fonasa",
@@ -179,36 +240,48 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
   @override
   Widget build(BuildContext context) {
     // LÓGICA DE NEGOCIO
-    if (db.campanas.isEmpty) return const Center(child: Text("No hay campañas activas."));
+    if (db.campanas.isEmpty)
+      return const Center(child: Text("No hay campañas activas."));
 
     _campanaSeleccionada ??= db.campanas.first;
     if (!_campanaSeleccionada!.tramos.contains(_tramoSeleccionado)) {
-      _tramoSeleccionado = _campanaSeleccionada!.tramos.isNotEmpty ? _campanaSeleccionada!.tramos.first : null;
+      _tramoSeleccionado = _campanaSeleccionada!.tramos.isNotEmpty
+          ? _campanaSeleccionada!.tramos.first
+          : null;
     }
 
-    List<CentroVacunacion> centrosConStock = db.centros.where(
-      (c) => c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna),
-    ).toList();
-    
-    if (_centroSeleccionado != null && !centrosConStock.contains(_centroSeleccionado)) {
+    List<CentroVacunacion> centrosConStock = db.centros
+        .where(
+          (c) => c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna),
+        )
+        .toList();
+
+    if (_centroSeleccionado != null &&
+        !centrosConStock.contains(_centroSeleccionado)) {
       _centroSeleccionado = null;
       _horaSeleccionada = null;
     }
-    _centroSeleccionado ??= centrosConStock.isNotEmpty ? centrosConStock.first : null;
+    _centroSeleccionado ??= centrosConStock.isNotEmpty
+        ? centrosConStock.first
+        : null;
 
     List<Paciente> listaPacientes = db.usuarios.whereType<Paciente>().toList();
-    _rutBeneficiarioSeleccionado ??= listaPacientes.isNotEmpty ? listaPacientes.first.rut : db.usuarioActivo!.rut;
+    _rutBeneficiarioSeleccionado ??= listaPacientes.isNotEmpty
+        ? listaPacientes.first.rut
+        : db.usuarioActivo!.rut;
 
     List<CitaVacunacion> todasLasCitas = [];
     for (var c in db.centros) {
       todasLasCitas.addAll(c.citasAgendadas);
     }
 
-    List<TimeOfDay> horasDisponibles = _centroSeleccionado != null ? _generarBloquesHorarios(_centroSeleccionado!.horarioAtencion) : [];
+    List<TimeOfDay> horasDisponibles = _centroSeleccionado != null
+        ? _generarBloquesHorarios(_centroSeleccionado!.horarioAtencion)
+        : [];
 
     // CONSTRUCCIÓN DE LA VISTA
     return Scaffold(
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       body: Column(
         children: [
           // ENCABEZADO
@@ -222,10 +295,12 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
-                )
+                ),
               ],
             ),
             child: Row(
@@ -245,7 +320,10 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(20),
@@ -254,7 +332,9 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                         "Panel de Recepción • ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
                         style: TextStyle(
                           fontSize: 14,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -270,9 +350,11 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                     foregroundColor: Theme.of(context).colorScheme.onTertiary,
                     elevation: 0,
                     minimumSize: const Size(0, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -285,49 +367,120 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Módulo de Agendamiento", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+                  Text(
+                    "Módulo de Agendamiento",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onBackground,
+                    ),
+                  ),
                   const SizedBox(height: 24),
-                  
+
                   // FORMULARIO DE AGENDAMIENTO
                   DropdownButtonFormField<String>(
                     value: _rutBeneficiarioSeleccionado,
                     decoration: InputDecoration(
-                      labelText: "Beneficiario de la Hora Médica", 
-                      prefixIcon: Icon(Icons.badge_outlined, color: Theme.of(context).colorScheme.primary),
-                      fillColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                      labelText: "Beneficiario de la Hora Médica",
+                      prefixIcon: Icon(
+                        Icons.badge_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      fillColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withOpacity(0.5),
                       filled: true,
                     ),
                     items: [
-                      DropdownMenuItem(value: db.usuarioActivo!.rut, child: Text("✨ Agendar para mí mismo (${db.usuarioActivo!.nombres})")),
-                      ...listaPacientes.map((p) => DropdownMenuItem(value: p.rut, child: Text("${p.nombres} ${p.apellidos} (${p.rut})")))
+                      DropdownMenuItem(
+                        value: db.usuarioActivo!.rut,
+                        child: Text(
+                          "✨ Agendar para mí mismo (${db.usuarioActivo!.nombres})",
+                        ),
+                      ),
+                      ...listaPacientes.map(
+                        (p) => DropdownMenuItem(
+                          value: p.rut,
+                          child: Text("${p.nombres} ${p.apellidos} (${p.rut})"),
+                        ),
+                      ),
                     ],
-                    onChanged: (val) => setState(() => _rutBeneficiarioSeleccionado = val),
+                    onChanged: (val) =>
+                        setState(() => _rutBeneficiarioSeleccionado = val),
                   ),
                   const SizedBox(height: 16),
 
                   DropdownButtonFormField<Campana>(
                     value: _campanaSeleccionada,
-                    decoration: InputDecoration(labelText: "Campaña Activa", prefixIcon: Icon(Icons.campaign_outlined, color: Theme.of(context).colorScheme.primary)),
-                    items: db.campanas.map((c) => DropdownMenuItem(value: c, child: Text("${c.nombre} (${c.vacuna.nombre})"))).toList(),
-                    onChanged: (val) => setState(() { _campanaSeleccionada = val; _tramoSeleccionado = val!.tramos.isNotEmpty ? val.tramos.first : null; }),
+                    decoration: InputDecoration(
+                      labelText: "Campaña Activa",
+                      prefixIcon: Icon(
+                        Icons.campaign_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    items: db.campanas
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c,
+                            child: Text("${c.nombre} (${c.vacuna.nombre})"),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() {
+                      _campanaSeleccionada = val;
+                      _tramoSeleccionado = val!.tramos.isNotEmpty
+                          ? val.tramos.first
+                          : null;
+                    }),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   if (_campanaSeleccionada!.tramos.isNotEmpty) ...[
                     DropdownButtonFormField<TramoCampana>(
                       value: _tramoSeleccionado,
-                      decoration: InputDecoration(labelText: "Tramo de Prioridad", prefixIcon: Icon(Icons.people_outline, color: Theme.of(context).colorScheme.primary)),
-                      items: _campanaSeleccionada!.tramos.map((t) => DropdownMenuItem(value: t, child: Text("${t.nombreTramo} -> ${t.poblacionObjetivo}"))).toList(),
-                      onChanged: (val) => setState(() => _tramoSeleccionado = val),
+                      decoration: InputDecoration(
+                        labelText: "Tramo de Prioridad",
+                        prefixIcon: Icon(
+                          Icons.people_outline,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      items: _campanaSeleccionada!.tramos
+                          .map(
+                            (t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(
+                                "${t.nombreTramo} -> ${t.poblacionObjetivo}",
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => _tramoSeleccionado = val),
                     ),
                     const SizedBox(height: 16),
                   ],
 
                   DropdownButtonFormField<CentroVacunacion>(
                     value: _centroSeleccionado,
-                    decoration: InputDecoration(labelText: "Sede de Vacunación", prefixIcon: Icon(Icons.local_hospital_outlined, color: Theme.of(context).colorScheme.primary)),
-                    items: centrosConStock.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
-                    onChanged: (val) => setState(() { _centroSeleccionado = val; _horaSeleccionada = null; }),
+                    decoration: InputDecoration(
+                      labelText: "Sede de Vacunación",
+                      prefixIcon: Icon(
+                        Icons.local_hospital_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    items: centrosConStock
+                        .map(
+                          (c) =>
+                              DropdownMenuItem(value: c, child: Text(c.nombre)),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() {
+                      _centroSeleccionado = val;
+                      _horaSeleccionada = null;
+                    }),
                   ),
                   const SizedBox(height: 24),
 
@@ -340,19 +493,43 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                           onTap: () => _seleccionarFecha(context),
                           borderRadius: BorderRadius.circular(15),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 18,
+                              horizontal: 16,
+                            ),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.surface,
                               borderRadius: BorderRadius.circular(15),
-                              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5), 
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
+                                width: 1.5,
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.calendar_month_rounded, color: Theme.of(context).colorScheme.primary),
+                                Icon(
+                                  Icons.calendar_month_rounded,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  _fechaSeleccionada == null ? "Seleccionar Fecha" : DateFormatter.formatDateOnly(_fechaSeleccionada!),
-                                  style: TextStyle(fontSize: 16, color: _fechaSeleccionada == null ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onBackground), 
+                                  _fechaSeleccionada == null
+                                      ? "Seleccionar Fecha"
+                                      : DateFormatter.formatDateOnly(
+                                          _fechaSeleccionada!,
+                                        ),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: _fechaSeleccionada == null
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onBackground,
+                                  ),
                                 ),
                               ],
                             ),
@@ -364,13 +541,28 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                         flex: 2,
                         child: DropdownButtonFormField<TimeOfDay>(
                           value: _horaSeleccionada,
-                          decoration: InputDecoration(labelText: "Bloque", prefixIcon: Icon(Icons.access_time_rounded, color: Theme.of(context).colorScheme.primary)), 
-                          disabledHint: const Text("Sede?"),
-                          items: horasDisponibles.map((h) => DropdownMenuItem(
-                            value: h, 
-                            child: Text("${h.hour.toString().padLeft(2,'0')}:${h.minute.toString().padLeft(2,'0')}")
-                          )).toList(),
-                          onChanged: _fechaSeleccionada == null ? null : (val) => setState(() => _horaSeleccionada = val),
+                          decoration: InputDecoration(
+                            labelText: "Bloque",
+                            prefixIcon: Icon(
+                              Icons.access_time_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          disabledHint: const Text("Seleccione Día"),
+                          items: horasDisponibles
+                              .map(
+                                (h) => DropdownMenuItem(
+                                  value: h,
+                                  child: Text(
+                                    "${h.hour.toString().padLeft(2, '0')}:${h.minute.toString().padLeft(2, '0')}",
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _fechaSeleccionada == null
+                              ? null
+                              : (val) =>
+                                    setState(() => _horaSeleccionada = val),
                         ),
                       ),
                     ],
@@ -383,68 +575,117 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                       minimumSize: const Size(double.infinity, 60),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
-                    icon: const Icon(Icons.check_circle_outline_rounded, size: 24),
-                    label: const Text("Confirmar Cita Médica", style: TextStyle(fontSize: 18)),
-                    onPressed: (_tramoSeleccionado == null || _centroSeleccionado == null || _fechaSeleccionada == null || _horaSeleccionada == null) ? null : () {
-                      Paciente pacienteDestino;
-                      if (_rutBeneficiarioSeleccionado == db.usuarioActivo!.rut) {
-                        pacienteDestino = Paciente(
-                          rut: db.usuarioActivo!.rut, 
-                          nombres: db.usuarioActivo!.nombres, 
-                          apellidos: db.usuarioActivo!.apellidos, 
-                          correo: db.usuarioActivo!.correo, 
-                          telefono: "S/N", 
-                          fechaNacimiento: DateTime.now(), 
-                          prevision: "Fonasa", 
-                          grupoRiesgo: "Público General", 
-                          estadoVacunacion: "Sin vacunas"
-                        );
-                      } else {
-                        pacienteDestino = db.usuarios.firstWhere((u) => u.rut == _rutBeneficiarioSeleccionado) as Paciente;
-                      }
-                      
-                      DateTime fechaHoraFinal = DateTime(
-                        _fechaSeleccionada!.year, 
-                        _fechaSeleccionada!.month, 
-                        _fechaSeleccionada!.day, 
-                        _horaSeleccionada!.hour, 
-                        _horaSeleccionada!.minute
-                      );
-                      
-                      CitaVacunacion? cita = _centroSeleccionado!.crearCita(fechaHoraFinal, pacienteDestino, _tramoSeleccionado!.idTramo);
-                      
-                      if (cita != null) {
-                        CustomDialogs.showMessage(context, "Éxito", "Cita agendada correctamente en ${_centroSeleccionado!.nombre}.");
-                        setState(() { _fechaSeleccionada = null; _horaSeleccionada = null; });
-                      } else {
-                        CustomDialogs.showMessage(context, "Error", "Sin cupos para el bloque horario.");
-                      }
-                    },
+                    icon: const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 24,
+                    ),
+                    label: const Text(
+                      "Confirmar Cita Médica",
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    onPressed:
+                        (_tramoSeleccionado == null ||
+                            _centroSeleccionado == null ||
+                            _fechaSeleccionada == null ||
+                            _horaSeleccionada == null)
+                        ? null
+                        : () {
+                            Paciente pacienteDestino;
+                            if (_rutBeneficiarioSeleccionado ==
+                                db.usuarioActivo!.rut) {
+                              pacienteDestino = Paciente(
+                                rut: db.usuarioActivo!.rut,
+                                nombres: db.usuarioActivo!.nombres,
+                                apellidos: db.usuarioActivo!.apellidos,
+                                correo: db.usuarioActivo!.correo,
+                                telefono: "S/N",
+                                fechaNacimiento: DateTime.now(),
+                                prevision: "Fonasa",
+                                grupoRiesgo: "Público General",
+                                estadoVacunacion: "Sin vacunas",
+                              );
+                            } else {
+                              pacienteDestino =
+                                  db.usuarios.firstWhere(
+                                        (u) =>
+                                            u.rut ==
+                                            _rutBeneficiarioSeleccionado,
+                                      )
+                                      as Paciente;
+                            }
+
+                            DateTime fechaHoraFinal = DateTime(
+                              _fechaSeleccionada!.year,
+                              _fechaSeleccionada!.month,
+                              _fechaSeleccionada!.day,
+                              _horaSeleccionada!.hour,
+                              _horaSeleccionada!.minute,
+                            );
+
+                            CitaVacunacion? cita = _centroSeleccionado!
+                                .crearCita(
+                                  fechaHoraFinal,
+                                  pacienteDestino,
+                                  _tramoSeleccionado!.idTramo,
+                                );
+
+                            if (cita != null) {
+                              CustomDialogs.showMessage(
+                                context,
+                                "Éxito",
+                                "Cita agendada correctamente en ${_centroSeleccionado!.nombre}.",
+                              );
+                              setState(() {
+                                _fechaSeleccionada = null;
+                                _horaSeleccionada = null;
+                              });
+                            } else {
+                              CustomDialogs.showMessage(
+                                context,
+                                "Error",
+                                "Sin cupos para el bloque horario.",
+                              );
+                            }
+                          },
                   ),
-                  
+
                   const SizedBox(height: 40),
                   const Divider(height: 1),
                   const SizedBox(height: 24),
-                  
+
                   // HISTORIAL DE CITAS (Tarjetas flotantes)
                   Row(
                     children: [
-                      Icon(Icons.history_rounded, color: Theme.of(context).colorScheme.primary),
+                      Icon(
+                        Icons.history_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       const SizedBox(width: 8),
-                      Text("Historial de Citas", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
+                      Text(
+                        "Historial de Citas",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onBackground,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: todasLasCitas.length,
                     itemBuilder: (context, index) {
                       var c = todasLasCitas[index];
-                      var centroNombre = db.centros.firstWhere((centro) => centro.idCentro == c.idCentro).nombre;
+                      var centroNombre = db.centros
+                          .firstWhere((centro) => centro.idCentro == c.idCentro)
+                          .nombre;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
@@ -452,31 +693,67 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                           borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.03), 
+                              color: Colors.black.withOpacity(0.03),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
-                            )
+                            ),
                           ],
                         ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 8,
+                          ),
                           leading: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle), 
-                            child: Icon(Icons.vaccines_rounded, color: Theme.of(context).colorScheme.primary),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.vaccines_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                           ),
-                          title: Text("RUT: ${c.rutPaciente}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          title: Text(
+                            "RUT: ${c.rutPaciente}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4.0),
-                            child: Text("$centroNombre\n${DateFormatter.formatDateTime(c.fechaHora)}", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
+                            child: Text(
+                              "$centroNombre\n${DateFormatter.formatDateTime(c.fechaHora)}",
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
                           ),
                           trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.secondaryContainer,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(c.estado, style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.w600, fontSize: 12)),
+                            child: Text(
+                              c.estado,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondaryContainer,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         ),
                       );
