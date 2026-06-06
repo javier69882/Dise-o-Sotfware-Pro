@@ -47,6 +47,9 @@ distribuida. El objeto sint:SeguimientoSintomas se encarga de manera exclusiva d
 operación 1.2.1.1: [si posee] compilarEstadisticasGravedad(), manteniendo sus 
 responsabilidades enfocadas, cohesivas y fáciles de mantener. 
 
+## UML general 
+![alt text](<uml.jpeg>)
+
 ## Diagrama de clases
 ![alt text](<clases.jpeg>)
 
@@ -82,8 +85,6 @@ Campaña -> TramoCampaña -> RegistroVacunacion -> SeguimientoSintomas: Se defin
 
 
 ## Justificación Patrones
-
-![alt text](<uml.jpeg>)
 
 ![alt text](<uml_e.jpeg>)
 
