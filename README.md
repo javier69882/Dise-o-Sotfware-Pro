@@ -1,3 +1,6 @@
+## Comando de ejecución
+Estando en el root del código (\campana_vacunas) ejecutar el comando "flutter run". Una vez hecho esto igrese el número que corresponda a la opción de abrir en Chrome.
+
 # Sistema de vacunas
 ## Diagrama de comunicación con creación de objetos (Agendamiento)
 ![alt text](comunicacion_agendar.drawio.png)
