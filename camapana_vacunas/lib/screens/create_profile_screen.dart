@@ -36,7 +36,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
   final List<String> _opcionesRol = [
     "Paciente",
     "Administrador",
-    "Secretario/a", // <-- Mantenemos los nombres inclusivos de la UI nueva
+    "Secretario/a", 
     "Enfermero/a",
     "Médico",
   ];
@@ -62,12 +62,12 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
             nombres: _nombresCtrl.text,
             apellidos: _apellidosCtrl.text,
             correo: _correoCtrl.text,
-            telefono: _telefonoCtrl.text, // <-- Mantenemos tu guardado de teléfono
+            telefono: _telefonoCtrl.text, 
             fechaNacimiento: fechaNac,
             departamento: _departamentoCtrl.text.isEmpty ? "General" : _departamentoCtrl.text,
           );
           break;
-        case "Secretario/a": // <-- Actualizado para coincidir con el Dropdown
+        case "Secretario/a": 
           nuevoUsuario = Secretario(
             rut: _rutCtrl.text,
             nombres: _nombresCtrl.text,
@@ -78,7 +78,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
             idSecretario: _idSecretarioCtrl.text.isEmpty ? "SEC-NUEVO" : _idSecretarioCtrl.text,
           );
           break;
-        case "Enfermero/a": // <-- Actualizado para coincidir con el Dropdown
+        case "Enfermero/a": 
           nuevoUsuario = Enfermero(
             rut: _rutCtrl.text,
             nombres: _nombresCtrl.text,

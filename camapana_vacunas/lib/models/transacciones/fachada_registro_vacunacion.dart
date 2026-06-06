@@ -4,7 +4,7 @@ import '../notificaciones/notificacion_manager.dart'; // <-- Nueva importación
 import 'cita_vacunacion.dart';
 import 'registro_vacunacion.dart';
 import '../../services/mock_database.dart';
-
+// La Fachada se encarga de orquestar todo el proceso de registro de vacunación, desde la verificación del inventario hasta la actualización del estado de la cita y el paciente. También se encarga de notificar al sistema sobre el nuevo registro de inmunización.
 class FachadaRegistroVacunacion {
   
   static String procesarVacunacion({
@@ -46,7 +46,7 @@ class FachadaRegistroVacunacion {
 
       db.historialRegistros.add(nuevoRegistro);
 
-      // AQUÍ SE HACE LA LLAMADA DIRECTA REQUERIDA POR EL UML
+   
       NotificacionManager().notificarRegistroInmunizacion(paciente.rut, nuevoRegistro.idRegistro);
 
       return "Éxito: Inmunización registrada para ${paciente.nombres}. Lote: ${inventario.lote}";

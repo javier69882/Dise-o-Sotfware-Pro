@@ -4,6 +4,9 @@ import '../usuarios/paciente.dart';
 import '../../services/mock_database.dart';
 import '../../utils/date_formatter.dart';
 
+
+
+//director del patron builder, se encarga de construir el historial completo a partir de los datos del paciente y su historial de vacunación. Recibe las alergias y condiciones ingresadas por el usuario para incluirlas en el historial.
 class DirectorHistorial {
   final HistorialMedicoBuilder _builder;
 

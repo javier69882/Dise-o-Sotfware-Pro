@@ -16,7 +16,7 @@ class CentroVacunacion {
   String tipo; 
   
   List<CitaVacunacion> citasAgendadas = [];
-  List<InventarioVacuna> inventarios = []; // Relación Centro *-- Inventario
+  List<InventarioVacuna> inventarios = []; 
 
   CentroVacunacion({
     required this.idCentro,
@@ -30,7 +30,7 @@ class CentroVacunacion {
     this.estadoDisponibilidad = true,
   });
 
-  // NUEVO MÉTODO: Revisa si el centro tiene stock vigente de la vacuna requerida
+  
   bool tieneStockDeVacuna(String idVacuna) {
     return inventarios.any((inv) => 
       inv.vacuna.idVacuna == idVacuna && 
@@ -57,16 +57,16 @@ class CentroVacunacion {
         rutPaciente: paciente.rut,
         idTramo: idTramo,
         idCentro: this.idCentro,
-        fechaHora: fecha, // Corregido: usa el parámetro 'fecha'
+        fechaHora: fecha, 
         estado: "Programada", 
       );
 
       citasAgendadas.add(nuevaCita);
 
-      // --- NUEVO CÓDIGO HU-16: DISPARAR NOTIFICACIÓN ---
+     
       NotificacionManager().notificarNuevaCita(
         paciente.rut, 
-        DateFormatter.formatDateTime(fecha), // Corregido: usa el parámetro 'fecha'
+        DateFormatter.formatDateTime(fecha), 
         this.nombre
       );
 
