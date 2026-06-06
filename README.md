@@ -24,7 +24,7 @@ cumpliendo con las directrices del patrón Creador.
 
 
 ## Diagrama de comunicación de consulta (Reporte de efectos)
-![alt text](hola.drawio.png)
+![alt text](reporte_efectos.png)
 
 Este diagrama modela una consulta profunda sobre el dominio para generar estadísticas, 
 sin crear nuevos objetos persistentes. Aquí se aplica de forma intensiva el patrón Experto 
