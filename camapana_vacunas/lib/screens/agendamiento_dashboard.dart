@@ -80,8 +80,11 @@ class _AgendamientoDashboardState extends State<AgendamientoDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (db.campanas.isEmpty)
-      return const Center(child: Text("No hay campañas activas."));
+    if (db.campanas.isEmpty) {
+      return Center(
+        child: Text("No hay campañas activas.", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      );
+    }
 
     _campanaSeleccionada ??= db.campanas.first;
     if (!_campanaSeleccionada!.tramos.contains(_tramoSeleccionado)) {
@@ -91,13 +94,10 @@ class _AgendamientoDashboardState extends State<AgendamientoDashboard> {
     }
 
     List<CentroVacunacion> centrosConStock = db.centros
-        .where(
-          (c) => c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna),
-        )
+        .where((c) => c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna))
         .toList();
 
-    if (_centroSeleccionado != null &&
-        !centrosConStock.contains(_centroSeleccionado)) {
+    if (_centroSeleccionado != null && !centrosConStock.contains(_centroSeleccionado)) {
       _centroSeleccionado = null;
     }
     if (_centroSeleccionado == null && centrosConStock.isNotEmpty) {
@@ -112,8 +112,9 @@ class _AgendamientoDashboardState extends State<AgendamientoDashboard> {
     for (var c in db.centros) {
       for (var cita in c.citasAgendadas) {
         if (db.usuarioActivo is Paciente) {
-          if (cita.rutPaciente == pacienteObjetivo.rut)
+          if (cita.rutPaciente == pacienteObjetivo.rut) {
             misCitasTotales.add(cita);
+          }
         } else {
           misCitasTotales.add(cita);
         }
@@ -121,121 +122,141 @@ class _AgendamientoDashboardState extends State<AgendamientoDashboard> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Solicitud de Agendamiento Web",
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 22, 
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onBackground,
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           DropdownButtonFormField<Campana>(
             value: _campanaSeleccionada,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: "Seleccionar Campaña",
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.campaign_rounded, color: Theme.of(context).colorScheme.primary),
             ),
-            items: db.campanas
-                .map(
-                  (c) => DropdownMenuItem(
-                    value: c,
-                    child: Text("${c.nombre} (Vacuna: ${c.vacuna.nombre})"),
-                  ),
-                )
-                .toList(),
+            items: db.campanas.map((c) => DropdownMenuItem(
+              value: c,
+              child: Text("${c.nombre} (Vacuna: ${c.vacuna.nombre})"),
+            )).toList(),
             onChanged: (val) {
               setState(() {
                 _campanaSeleccionada = val;
-                _tramoSeleccionado = val!.tramos.isNotEmpty
-                    ? val.tramos.first
-                    : null;
+                _tramoSeleccionado = val!.tramos.isNotEmpty ? val.tramos.first : null;
               });
             },
           ),
           const SizedBox(height: 16),
 
           if (_campanaSeleccionada!.tramos.isEmpty)
-            const Text(
-              "Esta campaña no tiene tramos activos actualmente.",
-              style: TextStyle(color: Colors.red),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 12),
+                  Text("Esta campaña no tiene tramos activos actualmente.", style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold)),
+                ],
+              ),
             )
           else
             DropdownButtonFormField<TramoCampana>(
               value: _tramoSeleccionado,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Seleccionar Tramo de Prioridad",
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.groups_rounded, color: Theme.of(context).colorScheme.primary),
               ),
-              items: _campanaSeleccionada!.tramos
-                  .map(
-                    (t) => DropdownMenuItem(
-                      value: t,
-                      child: Text(
-                        "${t.nombreTramo} (Dirigido a: ${t.poblacionObjetivo})",
-                      ),
-                    ),
-                  )
-                  .toList(),
+              items: _campanaSeleccionada!.tramos.map((t) => DropdownMenuItem(
+                value: t,
+                child: Text("${t.nombreTramo} (Dirigido a: ${t.poblacionObjetivo})"),
+              )).toList(),
               onChanged: (val) => setState(() => _tramoSeleccionado = val),
             ),
           const SizedBox(height: 16),
 
           if (centrosConStock.isEmpty)
-            const Text(
-              "⚠️ Ningún centro tiene stock disponible de la vacuna para esta campaña.",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.inventory_2_outlined, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text("Ningún centro tiene stock disponible de la vacuna para esta campaña.", style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold))),
+                ],
+              ),
             )
           else
             DropdownButtonFormField<CentroVacunacion>(
               value: _centroSeleccionado,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Sedes disponibles con Stock",
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.local_hospital_rounded, color: Theme.of(context).colorScheme.primary),
               ),
-              items: centrosConStock
-                  .map(
-                    (c) => DropdownMenuItem(
-                      value: c,
-                      child: Text("${c.nombre} - ${c.comuna} (${c.tipo})"),
-                    ),
-                  )
-                  .toList(),
+              items: centrosConStock.map((c) => DropdownMenuItem(
+                value: c,
+                child: Text("${c.nombre} - ${c.comuna} (${c.tipo})"),
+              )).toList(),
               onChanged: (val) => setState(() => _centroSeleccionado = val),
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              side: BorderSide(color: Colors.grey.shade400, width: 1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: ListTile(
-              leading: const Icon(Icons.access_time),
-              title: Text(
-                _fechaCitaSeleccionada == null
-                    ? "Seleccionar Fecha y Hora de la Cita"
-                    : "Fecha seleccionada: ${DateFormatter.formatDateTime(_fechaCitaSeleccionada!)}",
+          // Selector de Fecha y Hora Integrado
+          InkWell(
+            onTap: () => _seleccionarFechaHora(context),
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
               ),
-              trailing: ElevatedButton(
-                onPressed: () => _seleccionarFechaHora(context),
-                child: const Text("Elegir Fecha"),
+              child: Row(
+                children: [
+                  Icon(Icons.event_available_rounded, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      _fechaCitaSeleccionada == null
+                          ? "Seleccionar Fecha y Hora de la Cita"
+                          : "Fecha: ${DateFormatter.formatDateTime(_fechaCitaSeleccionada!)}",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: _fechaCitaSeleccionada == null ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onBackground,
+                        fontWeight: _fechaCitaSeleccionada == null ? FontWeight.normal : FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.edit_calendar_rounded, color: Theme.of(context).colorScheme.primary),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
           ElevatedButton.icon(
-            onPressed:
-                (_tramoSeleccionado == null ||
-                    _centroSeleccionado == null ||
-                    _fechaCitaSeleccionada == null)
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+            ),
+            onPressed: (_tramoSeleccionado == null || _centroSeleccionado == null || _fechaCitaSeleccionada == null)
                 ? null
                 : () {
-                    bool tienePrioridad = _tramoSeleccionado!
-                        .validarPrioridadPaciente(pacienteObjetivo);
+                    bool tienePrioridad = _tramoSeleccionado!.validarPrioridadPaciente(pacienteObjetivo);
 
                     if (tienePrioridad) {
                       _procesarCita(
@@ -270,6 +291,10 @@ class _AgendamientoDashboardState extends State<AgendamientoDashboard> {
                                   _fechaCitaSeleccionada!,
                                 );
                               },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.error,
+                                foregroundColor: Theme.of(context).colorScheme.onError,
+                              ),
                               child: const Text("Continuar de todos modos"),
                             ),
                           ],
@@ -277,38 +302,74 @@ class _AgendamientoDashboardState extends State<AgendamientoDashboard> {
                       );
                     }
                   },
-            icon: const Icon(Icons.event_available),
+            icon: const Icon(Icons.check_circle_outline_rounded),
             label: const Text("Confirmar y Agendar"),
           ),
-          const SizedBox(height: 30),
+          
+          const SizedBox(height: 40),
           const Divider(),
-          const SizedBox(height: 10),
-          const Text(
-            "Mis citas agendadas:",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          const SizedBox(height: 24),
+          
+          Row(
+            children: [
+              Icon(Icons.history_rounded, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                "Mis citas agendadas",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
+          
           Expanded(
             child: misCitasTotales.isEmpty
-                ? const Text("Aún no tienes citas programadas.")
+                ? Text("Aún no tienes citas programadas.", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))
                 : ListView.builder(
+                    physics: const BouncingScrollPhysics(),
                     itemCount: misCitasTotales.length,
                     itemBuilder: (context, index) {
                       var cita = misCitasTotales[index];
-                      String nombreCentro = db.centros
-                          .firstWhere((c) => c.idCentro == cita.idCentro)
-                          .nombre;
-                      return Card(
+                      String nombreCentro = db.centros.firstWhere((c) => c.idCentro == cita.idCentro).nombre;
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                        ),
                         child: ListTile(
-                          leading: const Icon(
-                            Icons.calendar_month,
-                            color: Colors.teal,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+                            child: Icon(Icons.calendar_month_rounded, color: Theme.of(context).colorScheme.primary),
                           ),
                           title: Text(
                             DateFormatter.formatDateTime(cita.fechaHora),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Text(
-                            "Centro: $nombreCentro \nEstado: ${cita.estado}",
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text("Centro: $nombreCentro", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              cita.estado, 
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.w600, fontSize: 12),
+                            ),
                           ),
                         ),
                       );

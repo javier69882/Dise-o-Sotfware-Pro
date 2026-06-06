@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'routes/app_routes.dart'; 
+import 'utils/app_theme.dart';
 
 void main() {
   runApp(const VacunacionApp());
@@ -23,10 +24,8 @@ class VacunacionApp extends StatelessWidget {
         Locale('en', 'US'), // Inglés (fallback)
       ],
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme, // Tema definido en app_theme.dart
+      
       initialRoute: AppRoutes.welcome,
       routes: AppRoutes.getRoutes(),
     );

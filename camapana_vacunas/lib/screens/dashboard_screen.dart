@@ -27,23 +27,39 @@ class DashboardScreen extends StatelessWidget {
     if (db.usuarioActivo == null) return const SizedBox.shrink();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Panel: ${db.usuarioActivo!.nombres} (${db.usuarioActivo!.runtimeType})"),
-        backgroundColor: Colors.teal.shade50,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.teal),
-            tooltip: "Cerrar Sesión",
-            onPressed: () => _cerrarSesion(context),
-          )
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: _enrutarPorRol(db.usuarioActivo),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer,
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: _enrutarPorRol(db.usuarioActivo),
+            ),
+          ),
         ),
       ),
+      
+      // BOTÓN DE CERRAR SESIÓN UNIVERSAL
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _cerrarSesion(context),
+        backgroundColor: Theme.of(context).colorScheme.errorContainer,
+        foregroundColor: Theme.of(context).colorScheme.error,
+        elevation: 4,
+        icon: const Icon(Icons.logout_rounded),
+        label: const Text("Cerrar Sesión", style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
