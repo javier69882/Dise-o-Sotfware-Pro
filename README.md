@@ -1,9 +1,46 @@
 # Sistema de vacunas
-## Diagrama de comunicación con creación de objetos (GRASP)
+## Diagrama de comunicación con creación de objetos (Agendamiento)
 ![alt text](comunicacion_agendar.drawio.png)
+En este diagrama se modela la creación de una nueva cita médica aplicando los patrones 
+GRASP correspondientes. En primer lugar, se utiliza el patrón Controlador, donde el objeto 
+sec:Secretario actúa como el primer nodo que recibe y coordina la operación del sistema 
+mediante el mensaje 1: iniciarAgendamiento(paciente,fecha,c). 
+Para la validación de los datos, se aplica el patrón Experto en Información. Por un lado, se 
+delega al objeto t:TramoCampaña la responsabilidad de ejecutar el mensaje 1.1: ok := 
+validarPrioridadPaciente(paciente), ya que es la clase que posee la información sobre las 
+reglas y poblaciones objetivo. Por otro lado, se delega al objeto c:CentroVacunacion la 
+responsabilidad de ejecutar el mensaje 1.2: disp := consultarDisponibilidad(fecha), debido a 
+que este objeto conoce su propio aforo, horarios y las citas que ya tiene agendadas. 
+Finalmente, tras la validación mediante el mensaje 1.3: ok y disp := crearCita(fecha, 
+paciente), se aplica el patrón Creador. El objeto c:CentroVacunacion asume la 
+responsabilidad de instanciar el objeto nuevaCita:CitaVacunacion a través del mensaje 
+1.3.1: crear(fecha, paciente, estado). Esta asignación se justifica porque un Centro de 
+Vacunación es quien agrega, contiene y registra las citas de los pacientes en su recinto, 
+cumpliendo con las directrices del patrón Creador. 
 
-## Diagrama de comunicación de consulta (GRASP)
+
+## Diagrama de comunicación de consulta (Reporte de efectos)
 ![alt text](hola.drawio.png)
+Este diagrama modela una consulta profunda sobre el dominio para generar estadísticas, 
+sin crear nuevos objetos persistentes. Aquí se aplica de forma intensiva el patrón Experto 
+en Información, distribuyendo la responsabilidad de generar el reporte en cascada sobre los 
+expertos de cada nivel. El flujo comienza con el mensaje solicitarReporteEfectos(camp) 
+hacia admin:Administrador, quien envía el mensaje 1: stats := generarReporteEfectos() al 
+objeto camp:Campaña. La campaña itera con 1.1 * [para cada] t := siguiente() y delega la 
+tarea enviando 1.2: st := recopilarSintomas() al objeto t:TramoCampaña. A su vez, el tramo 
+delega enviando 1.2.1 * [para cada] sint := getSintomas() al objeto reg:RegistroVacunacion, 
+el cual termina enviando 1.2.1.1: [si posee] compilarEstadisticasGravedad() al objeto 
+sint:SeguimientoSintomas. Cada clase procesa exclusivamente la información que posee 
+lógicamente. 
+Esta estructura evidencia el patrón de Bajo Acoplamiento. Ni el Administrador ni la 
+Campaña conocen la existencia de la clase SeguimientoSintomas. La comunicación respeta 
+la jerarquía estricta, lo que garantiza que futuros cambios en la estructura de los síntomas 
+no afectarán directamente a la Campaña ni al Administrador. 
+Adicionalmente, se hace visible el patrón de Alta Cohesión. En lugar de tener una clase 
+centralizada calculando todas las matemáticas del sistema, la lógica se encuentra altamente 
+distribuida. El objeto sint:SeguimientoSintomas se encarga de manera exclusiva de la 
+operación 1.2.1.1: [si posee] compilarEstadisticasGravedad(), manteniendo sus 
+responsabilidades enfocadas, cohesivas y fáciles de mantener. 
 
 ## Justificación Patrones
 
