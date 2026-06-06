@@ -144,3 +144,6 @@ Pertinencia al flujo: Actúa en el flujo de Ejecución y Cierre. En el momento e
 
 ## Esquema de seguridad
 ![alt text](EsquemaSeguridad.png)
+
+## Link al video explicativo
+https://youtu.be/hhvTzEg9E5g
