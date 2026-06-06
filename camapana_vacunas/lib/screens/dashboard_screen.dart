@@ -7,7 +7,7 @@ import '../models/usuarios/enfermero.dart';
 import '../models/usuarios/medico.dart';
 import '../routes/app_routes.dart';
 
-// Importación de las 4 pantallas 100% separadas por Rol
+// Importación de las 4 pantallas 
 import 'admin_dashboard.dart';
 import 'paciente_dashboard.dart';
 import 'secretario_dashboard.dart';

@@ -4,8 +4,10 @@ import 'notificacion_base.dart';
 import 'notificacion_email.dart';
 import 'notificacion_sms.dart';
 import 'notificacion_whatsapp.dart';
-
+//aqui se utiliza el patron singleton
 class NotificacionManager implements IObservadorCita {
+
+  // Implementación del patrón Singleton
   static final NotificacionManager _instancia = NotificacionManager._internal();
   factory NotificacionManager() => _instancia;
   NotificacionManager._internal();
@@ -23,7 +25,7 @@ class NotificacionManager implements IObservadorCita {
     _ensamblarYEnviar("Clínico", mensaje, usarEmail: true, usarWhatsApp: true, usarSMS: false);
   }
 
-  // --- NUEVO MÉTODO PARA HU-16: Confirmación de Agendamiento ---
+  
   void notificarNuevaCita(String rutPaciente, String fechaFormateada, String nombreCentro) {
     String mensaje = "Estimado paciente ($rutPaciente), su cita ha sido agendada con éxito para el $fechaFormateada en la sede $nombreCentro.";
     // Decidimos despacharlo por Email y SMS

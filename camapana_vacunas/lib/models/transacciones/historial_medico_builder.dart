@@ -1,5 +1,6 @@
 import 'historial_medico.dart';
 
+// El Builder se encarga de construir el historial médico paso a paso, permitiendo agregar datos personales, vacunas aplicadas, alergias y condiciones previas. También maneja el consentimiento para compartir información.
 class HistorialMedicoBuilder {
   String _datosPersonales = "";
   final List<String> _vacunas = [];
@@ -9,7 +10,7 @@ class HistorialMedicoBuilder {
 
   HistorialMedicoBuilder setDatosPersonales(String datos) {
     _datosPersonales = datos;
-    return this; // Permite encadenamiento (chaining)
+    return this; // Permite encadenamiento 
   }
 
   HistorialMedicoBuilder agregarVacuna(String detalleVacuna) {

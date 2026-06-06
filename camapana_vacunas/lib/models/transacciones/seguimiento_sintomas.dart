@@ -15,7 +15,7 @@ class SeguimientoSintomas {
     fechaReporte = DateTime.now();
   }
 
-  // Refleja el paso 1.2.1.1 del diagrama hola.drawio.png
+  
   Map<String, int> compilarEstadisticasGravedad() {
     Map<String, int> stats = {"Leve": 0, "Moderado": 0, "Grave": 0};
     if (nivelGravedad == "Leve") stats["Leve"] = 1;
