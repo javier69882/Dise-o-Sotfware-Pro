@@ -1,6 +1,7 @@
 # Sistema de vacunas
 ## Diagrama de comunicación con creación de objetos (Agendamiento)
 ![alt text](comunicacion_agendar.drawio.png)
+
 En este diagrama se modela la creación de una nueva cita médica aplicando los patrones 
 GRASP correspondientes. En primer lugar, se utiliza el patrón Controlador, donde el objeto 
 sec:Secretario actúa como el primer nodo que recibe y coordina la operación del sistema 
@@ -21,6 +22,7 @@ cumpliendo con las directrices del patrón Creador.
 
 ## Diagrama de comunicación de consulta (Reporte de efectos)
 ![alt text](hola.drawio.png)
+
 Este diagrama modela una consulta profunda sobre el dominio para generar estadísticas, 
 sin crear nuevos objetos persistentes. Aquí se aplica de forma intensiva el patrón Experto 
 en Información, distribuyendo la responsabilidad de generar el reporte en cascada sobre los 
@@ -45,9 +47,41 @@ responsabilidades enfocadas, cohesivas y fáciles de mantener.
 ## Diagrama de clases
 ![alt text](<clases.jpeg>)
 
+### Correspondecia-mensaje método en Agendamiento:
+
+El mensaje 1.1: validarPrioridadPaciente(paciente) corresponde al método validarPrioridadPaciente(paciente: Paciente) en la clase TramoCampaña.
+
+El mensaje 1.2: consultarDisponibilidad(fecha) corresponde al método consultarDisponibilidad(fecha: DateTime) en la clase CentroVacunacion.
+
+El mensaje 1.3.1: crear(fecha, paciente, estado) corresponde al constructor o método de fábrica de la clase CitaVacunacion que se llama desde CentroVacunación.
+
+### Correspondecia-mensaje método en Reporte de efectos:
+
+El mensaje 1: generarReporteEfectos() del flujo de consulta corresponde al método generarReporteEfectos() en la clase Campaña.
+
+El mensaje 1.2: recopilarSintomas() corresponde al método recopilarSintomas() en la clase TramoCampaña.
+
+El mensaje 1.2.1: getSintomas() corresponde al método getSintomas() en la clase RegistroVacunacion.
+
+El mensaje 1.2.1.1: compilarEstadisticasGravedad() corresponde al método compilarEstadisticasGravedad() en la clase SeguimientoSintomas.
+
+### Navegabilidad en Agendamiento
+
+Secretario -> CitaVacunacion: El secretario gestiona e instancia citas, por lo que conoce a la cita, pero la cita no necesita conocer qué secretario específico la creó en su lógica de dominio.
+
+CentroVacunacion -> CitaVacunacion: El centro debe poder navegar hacia sus citas agendadas para iterar sobre ellas y resolver el mensaje consultarDisponibilidad().
+
+### Navegabilidad en Reporte de efectos
+
+Administrador -> Campaña: El administrador inicia la consulta, por lo que requiere navegabilidad hacia la Campaña para invocar generarReporteEfectos().
+
+Campaña -> TramoCampaña -> RegistroVacunacion -> SeguimientoSintomas: Se define una navegabilidad unidireccional descendente (composición y agregación) que soporta el paso de mensajes en cascada para la recopilación de datos, asegurando un bajo acoplamiento al evitar dependencias cíclicas hacia arriba.
+
+
 ## Justificación Patrones
 
 ![alt text](<uml.jpeg>)
+
 ![alt text](<uml_e.jpeg>)
 
 ### Patrón Creacional: Builder (Constructor)
