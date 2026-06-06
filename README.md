@@ -42,9 +42,13 @@ distribuida. El objeto sint:SeguimientoSintomas se encarga de manera exclusiva d
 operación 1.2.1.1: [si posee] compilarEstadisticasGravedad(), manteniendo sus 
 responsabilidades enfocadas, cohesivas y fáciles de mantener. 
 
+## Diagrama de clases
+![alt text](<clases.jpeg>)
+
 ## Justificación Patrones
 
-![alt text](patrones_uml.png)
+![alt text](<uml.jpeg>)
+![alt text](<uml_e.jpeg>)
 
 ### Patrón Creacional: Builder (Constructor)
 
