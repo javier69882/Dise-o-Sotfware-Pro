@@ -100,3 +100,6 @@ Pertinencia al flujo: Actúa en el flujo de Ejecución y Cierre. En el momento e
 
 ## Diseño BPMN
 ![alt text](bpmn.png)
+
+## Esquema de seguridad
+![alt text](EsquemaSeguridad.png)
