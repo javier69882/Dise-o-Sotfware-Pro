@@ -24,7 +24,7 @@ cumpliendo con las directrices del patrón Creador.
 
 
 ## Diagrama de comunicación de consulta (Reporte de efectos)
-![alt text](hola.drawio.png)
+![alt text](reporte_efectos.png)
 
 Este diagrama modela una consulta profunda sobre el dominio para generar estadísticas, 
 sin crear nuevos objetos persistentes. Aquí se aplica de forma intensiva el patrón Experto 
@@ -46,6 +46,9 @@ centralizada calculando todas las matemáticas del sistema, la lógica se encuen
 distribuida. El objeto sint:SeguimientoSintomas se encarga de manera exclusiva de la 
 operación 1.2.1.1: [si posee] compilarEstadisticasGravedad(), manteniendo sus 
 responsabilidades enfocadas, cohesivas y fáciles de mantener. 
+
+## UML general 
+![alt text](<uml.jpeg>)
 
 ## Diagrama de clases
 ![alt text](<clases.jpeg>)
@@ -82,8 +85,6 @@ Campaña -> TramoCampaña -> RegistroVacunacion -> SeguimientoSintomas: Se defin
 
 
 ## Justificación Patrones
-
-![alt text](<uml.jpeg>)
 
 ![alt text](<uml_e.jpeg>)
 
@@ -144,3 +145,6 @@ Pertinencia al flujo: Actúa en el flujo de Ejecución y Cierre. En el momento e
 
 ## Esquema de seguridad
 ![alt text](EsquemaSeguridad.png)
+
+## Link al video explicativo
+https://youtu.be/hhvTzEg9E5g
