@@ -176,8 +176,24 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                           )
                         ],
                       ),
-                      child: const TabBar(
-                        tabs: [
+                      child: TabBar(
+                        padding: const EdgeInsets.all(6),
+                        indicator: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary, 
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                        ),
+                        labelColor: Colors.white,
+                        unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent, // Quita la línea de abajo
+                        tabs: const [
                           Tab(icon: Icon(Icons.event_available_rounded), text: "Auto-Agendamiento"),
                           Tab(icon: Icon(Icons.medical_information_rounded), text: "Mi Historial Médico"),
                         ],
@@ -213,95 +229,122 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
         // PANEL IZQUIERDO: Formulario de llenado
         Expanded(
           flex: 1,
-          child: ListView(
-            physics: const BouncingScrollPhysics(),
-            children: [
-              Text("Construir Antecedentes", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
-              const SizedBox(height: 16),
-              
-              // Agregar Alergias
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _alergiaCtrl,
-                      decoration: InputDecoration(
-                        labelText: "Añadir Alergia", 
-                        prefixIcon: Icon(Icons.sick_outlined, color: Theme.of(context).colorScheme.primary)
+          child: Container(
+            padding: const EdgeInsets.all(32.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface, // Centralizado: Blanco del tema
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5), // Centralizado
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                )
+              ],
+            ),
+            child: Column(
+              children: [
+                
+                // 1. ZONA DESLIZABLE (Formularios y Chips)
+                Expanded(
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      Text(
+                        "Construir Antecedentes", 
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onBackground, letterSpacing: -0.5)
                       ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 36),
-                    onPressed: () {
-                      if (_alergiaCtrl.text.isNotEmpty) {
-                        setState(() { _misAlergias.add(_alergiaCtrl.text); _alergiaCtrl.clear(); });
-                      }
-                    },
-                  )
-                ],
-              ),
-              if (_misAlergias.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
-                  child: Wrap(
-                    spacing: 8.0,
-                    children: _misAlergias.map((a) => Chip(
-                      label: Text(a, style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      deleteIconColor: Theme.of(context).colorScheme.primary,
-                      side: BorderSide.none,
-                      onDeleted: () => setState(() => _misAlergias.remove(a)),
-                    )).toList(),
-                  ),
-                ),
-              const SizedBox(height: 16),
+                      const SizedBox(height: 32),
+                      
+                      // --- SECCIÓN ALERGIAS ---
+                      TextField(
+                        controller: _alergiaCtrl,
+                        decoration: InputDecoration(
+                          labelText: "Añadir Alergia", 
+                          hintText: "Ej. Polvo, Penicilina...",
+                          prefixIcon: Icon(Icons.sick_outlined, color: Theme.of(context).colorScheme.primary),
+                          suffixIcon: IconButton(
+                            icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 32),
+                            onPressed: () {
+                              if (_alergiaCtrl.text.isNotEmpty) {
+                                setState(() { _misAlergias.add(_alergiaCtrl.text); _alergiaCtrl.clear(); });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      if (_misAlergias.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Wrap(
+                            spacing: 8.0, runSpacing: 8.0,
+                            children: _misAlergias.map((a) => Chip(
+                              label: Text(a, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, fontWeight: FontWeight.w600, fontSize: 13)),
+                              backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Centralizado
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1), // Centralizado
+                              ),
+                              deleteIconColor: Theme.of(context).colorScheme.error,
+                              onDeleted: () => setState(() => _misAlergias.remove(a)),
+                            )).toList(),
+                          ),
+                        ),
+                      
+                      const SizedBox(height: 32),
 
-              // Agregar Condiciones Previas
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _condicionCtrl,
-                      decoration: InputDecoration(
-                        labelText: "Añadir Condición Previa", 
-                        prefixIcon: Icon(Icons.monitor_heart_outlined, color: Theme.of(context).colorScheme.primary)
+                      // --- SECCIÓN CONDICIONES ---
+                      TextField(
+                        controller: _condicionCtrl,
+                        decoration: InputDecoration(
+                          labelText: "Añadir Condición Previa", 
+                          hintText: "Ej. Asma, Hipertensión...",
+                          prefixIcon: Icon(Icons.monitor_heart_outlined, color: Theme.of(context).colorScheme.primary),
+                          suffixIcon: IconButton(
+                            icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 32),
+                            onPressed: () {
+                              if (_condicionCtrl.text.isNotEmpty) {
+                                setState(() { _misCondiciones.add(_condicionCtrl.text); _condicionCtrl.clear(); });
+                              }
+                            },
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 36),
-                    onPressed: () {
-                      if (_condicionCtrl.text.isNotEmpty) {
-                        setState(() { _misCondiciones.add(_condicionCtrl.text); _condicionCtrl.clear(); });
-                      }
-                    },
-                  )
-                ],
-              ),
-              if (_misCondiciones.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
-                  child: Wrap(
-                    spacing: 8.0,
-                    children: _misCondiciones.map((c) => Chip(
-                      label: Text(c, style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      deleteIconColor: Theme.of(context).colorScheme.primary,
-                      side: BorderSide.none,
-                      onDeleted: () => setState(() => _misCondiciones.remove(c)),
-                    )).toList(),
+                      if (_misCondiciones.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Wrap(
+                            spacing: 8.0, runSpacing: 8.0,
+                            children: _misCondiciones.map((c) => Chip(
+                              label: Text(c, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, fontWeight: FontWeight.w600, fontSize: 13)),
+                              backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Centralizado
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1), // Centralizado
+                              ),
+                              deleteIconColor: Theme.of(context).colorScheme.error,
+                              onDeleted: () => setState(() => _misCondiciones.remove(c)),
+                            )).toList(),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56)),
-                onPressed: () => _generarHistorialMedico(perfil),
-                icon: const Icon(Icons.download_rounded),
-                label: const Text("Generar Documento"),
-              ),
-            ],
+                
+                // 2. BOTÓN FIJO (Siempre visible al fondo de la tarjeta)
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56)),
+                  onPressed: () => _generarHistorialMedico(perfil),
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text("Generar Documento"),
+                ),
+                
+              ],
+            ),
           ),
         ),
         
@@ -482,8 +525,15 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                   padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5), // Centralizado
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04), // Sombra del botón
+                        blurRadius: 12,
+                        offset: const Offset(0, 4), // Elevar el botón
+                      )
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -498,7 +548,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 20),
             Expanded(
               flex: 2,
               child: DropdownButtonFormField<TimeOfDay>(
@@ -546,7 +596,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
             Text("Mis Citas Programadas", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         
         misCitas.isEmpty
             ? Text("No registras citas activas.", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))
@@ -557,39 +607,105 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                 itemBuilder: (context, index) {
                   var c = misCitas[index];
                   String centroN = db.centros.firstWhere((x) => x.idCentro == c.idCentro).nombre;
+                  
+                  // Variables para un diseño más moderno
+                  final primaryColor = Theme.of(context).colorScheme.primary;
+                  final primarySoft = primaryColor.withOpacity(0.08);
+                  
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(15),
+                      color: Theme.of(context).colorScheme.surface, // Centralizado
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
                         )
                       ],
                     ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
-                        child: Icon(Icons.calendar_month_rounded, color: Theme.of(context).colorScheme.primary),
-                      ),
-                      title: Text(DateFormatter.formatDateTime(c.fechaHora), style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
-                        child: Text("Sede: $centroN", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // 1. Contenedor del Icono
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: primarySoft, 
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.vaccines_rounded,
+                              color: primaryColor,
+                              size: 30,
+                            ),
+                          ),
                         ),
-                        child: Text(c.estado, style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.w600, fontSize: 12)),
-                      ),
+                        const SizedBox(width: 16),
+                        
+                        // 2. Información Principal
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                DateFormatter.formatDateTime(c.fechaHora), 
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
+                                  color: Theme.of(context).colorScheme.onBackground, // Centralizado
+                                )
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(Icons.location_on_rounded, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      centroN, 
+                                      style: TextStyle(
+                                        fontSize: 14, 
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant, // Centralizado
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // 3. Pill de Estado (Colores semánticos)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: c.estado == 'Agendada' 
+                                ? Theme.of(context).colorScheme.primaryContainer // Centralizado
+                                : Theme.of(context).colorScheme.secondaryContainer, // Centralizado
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            c.estado, 
+                            style: TextStyle(
+                              color: c.estado == 'Agendada' 
+                                  ? Theme.of(context).colorScheme.primary // Centralizado
+                                  : Theme.of(context).colorScheme.onSecondaryContainer, // Centralizado
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 12,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },
