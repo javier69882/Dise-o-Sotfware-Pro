@@ -221,234 +221,168 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
     );
   }
 
-  // VISTA: PESTAÑA DE HISTORIAL MÉDICO
+// VISTA: PESTAÑA DE HISTORIAL MÉDICO
   Widget _buildPestanaHistorial(Paciente perfil) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // PANEL IZQUIERDO: Formulario de llenado
-        Expanded(
-          flex: 1,
-          child: Container(
-            padding: const EdgeInsets.all(32.0),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface, // Centralizado: Blanco del tema
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5), // Centralizado
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                )
-              ],
-            ),
-            child: Column(
-              children: [
-                
-                // 1. ZONA DESLIZABLE (Formularios y Chips)
-                Expanded(
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      Text(
-                        "Construir Antecedentes", 
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onBackground, letterSpacing: -0.5)
-                      ),
-                      const SizedBox(height: 32),
-                      
-                      // --- SECCIÓN ALERGIAS ---
-                      TextField(
-                        controller: _alergiaCtrl,
-                        decoration: InputDecoration(
-                          labelText: "Añadir Alergia", 
-                          hintText: "Ej. Polvo, Penicilina...",
-                          prefixIcon: Icon(Icons.sick_outlined, color: Theme.of(context).colorScheme.primary),
-                          suffixIcon: IconButton(
-                            icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 32),
-                            onPressed: () {
-                              if (_alergiaCtrl.text.isNotEmpty) {
-                                setState(() { _misAlergias.add(_alergiaCtrl.text); _alergiaCtrl.clear(); });
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                      if (_misAlergias.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16.0),
-                          child: Wrap(
-                            spacing: 8.0, runSpacing: 8.0,
-                            children: _misAlergias.map((a) => Chip(
-                              label: Text(a, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, fontWeight: FontWeight.w600, fontSize: 13)),
-                              backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Centralizado
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1), // Centralizado
-                              ),
-                              deleteIconColor: Theme.of(context).colorScheme.error,
-                              onDeleted: () => setState(() => _misAlergias.remove(a)),
-                            )).toList(),
-                          ),
-                        ),
-                      
-                      const SizedBox(height: 32),
+    // 1. Detectamos si es una pantalla grande (Desktop/Web) o pequeña (Celular)
+    bool isDesktop = MediaQuery.of(context).size.width > 800;
 
-                      // --- SECCIÓN CONDICIONES ---
-                      TextField(
-                        controller: _condicionCtrl,
-                        decoration: InputDecoration(
-                          labelText: "Añadir Condición Previa", 
-                          hintText: "Ej. Asma, Hipertensión...",
-                          prefixIcon: Icon(Icons.monitor_heart_outlined, color: Theme.of(context).colorScheme.primary),
-                          suffixIcon: IconButton(
-                            icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 32),
-                            onPressed: () {
-                              if (_condicionCtrl.text.isNotEmpty) {
-                                setState(() { _misCondiciones.add(_condicionCtrl.text); _condicionCtrl.clear(); });
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                      if (_misCondiciones.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16.0),
-                          child: Wrap(
-                            spacing: 8.0, runSpacing: 8.0,
-                            children: _misCondiciones.map((c) => Chip(
-                              label: Text(c, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, fontWeight: FontWeight.w600, fontSize: 13)),
-                              backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Centralizado
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1), // Centralizado
-                              ),
-                              deleteIconColor: Theme.of(context).colorScheme.error,
-                              onDeleted: () => setState(() => _misCondiciones.remove(c)),
-                            )).toList(),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                
-                // 2. BOTÓN FIJO (Siempre visible al fondo de la tarjeta)
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56)),
-                  onPressed: () => _generarHistorialMedico(perfil),
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text("Generar Documento"),
-                ),
-                
-              ],
-            ),
+    // 2. CONTENIDO DEL FORMULARIO (Desacoplado)
+    List<Widget> formContent = [
+      Text("Construir Antecedentes", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onBackground, letterSpacing: -0.5)),
+      const SizedBox(height: 24),
+      TextField(
+        controller: _alergiaCtrl,
+        decoration: InputDecoration(
+          labelText: "Añadir Alergia", hintText: "Ej. Polvo, Penicilina...",
+          prefixIcon: Icon(Icons.sick_outlined, color: Theme.of(context).colorScheme.primary),
+          suffixIcon: IconButton(
+            icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 32),
+            onPressed: () { if (_alergiaCtrl.text.isNotEmpty) setState(() { _misAlergias.add(_alergiaCtrl.text); _alergiaCtrl.clear(); }); },
           ),
         ),
-        
-        const SizedBox(width: 32),
-        
-        // PANEL DERECHO: Visualización del Historial
-        Expanded(
-          flex: 2,
-          child: _historialGenerado == null 
-            ? // Empty state: Sin documento generado
-              Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5), 
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Ícono circular decorativo
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.assignment_add, 
-                          size: 64,
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        "Sin documento generado",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                        child: Text(
-                          "Agrega tus alergias o condiciones médicas en el panel izquierdo y presiona el botón 'Generar Documento' para visualizar tu reporte oficial.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : // DOCUMENTO GENERADO
-              Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    )
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      Center(child: Text("🏥 REPORTE MÉDICO OFICIAL", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2, color: Theme.of(context).colorScheme.onBackground))),
-                      const SizedBox(height: 16),
-                      const Divider(thickness: 1),
-                      const SizedBox(height: 16),
-                      Text("1. DATOS DEL PACIENTE", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                      const SizedBox(height: 8),
-                      Text(_historialGenerado!.datosPersonales, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
-                      const SizedBox(height: 24),
-                      Text("2. ANTECEDENTES CLÍNICOS", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                      const SizedBox(height: 8),
-                      Text("Alergias: ${_historialGenerado!.alergias}\nCondiciones: ${_historialGenerado!.condicionesPrevias}", style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
-                      const SizedBox(height: 24),
-                      Text("3. REGISTRO DE VACUNACIÓN", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                      const SizedBox(height: 8),
-                      Text(_historialGenerado!.vacunasAplicadas, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
-                      const SizedBox(height: 40),
-                      const Divider(),
-                      const SizedBox(height: 8),
-                      Center(child: Text("Documento generado el ${DateFormatter.formatDateTime(DateTime.now())}", style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant))),
-                    ],
-                  ),
-                ),
-              ),
-        )
-      ],
+      ),
+      if (_misAlergias.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 16.0),
+          child: Wrap(
+            spacing: 8.0, runSpacing: 8.0,
+            children: _misAlergias.map((a) => Chip(
+              label: Text(a, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, fontWeight: FontWeight.w600, fontSize: 13)),
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1)),
+              deleteIconColor: Theme.of(context).colorScheme.error,
+              onDeleted: () => setState(() => _misAlergias.remove(a)),
+            )).toList(),
+          ),
+        ),
+      const SizedBox(height: 32),
+      TextField(
+        controller: _condicionCtrl,
+        decoration: InputDecoration(
+          labelText: "Añadir Condición Previa", hintText: "Ej. Asma, Hipertensión...",
+          prefixIcon: Icon(Icons.monitor_heart_outlined, color: Theme.of(context).colorScheme.primary),
+          suffixIcon: IconButton(
+            icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 32),
+            onPressed: () { if (_condicionCtrl.text.isNotEmpty) setState(() { _misCondiciones.add(_condicionCtrl.text); _condicionCtrl.clear(); }); },
+          ),
+        ),
+      ),
+      if (_misCondiciones.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 16.0),
+          child: Wrap(
+            spacing: 8.0, runSpacing: 8.0,
+            children: _misCondiciones.map((c) => Chip(
+              label: Text(c, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, fontWeight: FontWeight.w600, fontSize: 13)),
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1)),
+              deleteIconColor: Theme.of(context).colorScheme.error,
+              onDeleted: () => setState(() => _misCondiciones.remove(c)),
+            )).toList(),
+          ),
+        ),
+    ];
+
+    Widget botonGenerar = ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56)),
+      onPressed: () => _generarHistorialMedico(perfil),
+      icon: const Icon(Icons.download_rounded),
+      label: const Text("Generar Documento"),
     );
+
+    // 3. ARMADO DEL PANEL IZQUIERDO
+    Widget panelIzquierdo = Container(
+      padding: EdgeInsets.all(isDesktop ? 32.0 : 24.0), // Menos padding interno en celular
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: isDesktop 
+        ? Column(
+            children: [
+              Expanded(child: ListView(physics: const BouncingScrollPhysics(), children: formContent)),
+              const SizedBox(height: 16),
+              botonGenerar,
+            ],
+          )
+        : Column( // En celular dejamos que el formulario ocupe su altura natural
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [...formContent, const SizedBox(height: 32), botonGenerar],
+          ),
+    );
+
+    // 4. ARMADO DEL PANEL DERECHO (REPORTE)
+    Widget panelDerechoContenido = _historialGenerado == null
+      ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+                child: Icon(Icons.assignment_add, size: 48, color: Theme.of(context).colorScheme.primary.withOpacity(0.6)),
+              ),
+              const SizedBox(height: 24),
+              Text("Sin documento", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7))),
+              const SizedBox(height: 12),
+              Text("Agrega tus datos en el formulario y genera el reporte.", textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5)),
+            ],
+          ),
+        )
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Text("🏥 REPORTE MÉDICO", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Theme.of(context).colorScheme.onBackground))),
+            const SizedBox(height: 16), const Divider(thickness: 1), const SizedBox(height: 16),
+            Text("1. DATOS DEL PACIENTE", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+            const SizedBox(height: 8), Text(_historialGenerado!.datosPersonales, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
+            const SizedBox(height: 24),
+            Text("2. ANTECEDENTES CLÍNICOS", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+            const SizedBox(height: 8), Text("Alergias: ${_historialGenerado!.alergias}\nCondiciones: ${_historialGenerado!.condicionesPrevias}", style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
+            const SizedBox(height: 24),
+            Text("3. REGISTRO DE VACUNACIÓN", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+            const SizedBox(height: 8), Text(_historialGenerado!.vacunasAplicadas, style: TextStyle(color: Theme.of(context).colorScheme.onBackground, height: 1.5)),
+            const SizedBox(height: 32), const Divider(), const SizedBox(height: 8),
+            Center(child: Text("Generado el ${DateFormatter.formatDateTime(DateTime.now())}", style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant))),
+          ],
+        );
+
+    Widget panelDerechoDecorado = Container(
+      padding: EdgeInsets.all(isDesktop ? 32.0 : 24.0),
+      decoration: BoxDecoration(
+        color: _historialGenerado == null ? Theme.of(context).colorScheme.surface.withOpacity(0.7) : Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: _historialGenerado == null ? 1.5 : 1.0),
+        boxShadow: _historialGenerado == null ? null : [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 5))],
+      ),
+      child: isDesktop ? ListView(physics: const BouncingScrollPhysics(), children: [panelDerechoContenido]) : panelDerechoContenido,
+    );
+
+    // 5. RENDERIZADO FINAL
+    if (isDesktop) {
+      // Pantalla ancha: Lado a lado
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 1, child: panelIzquierdo),
+          const SizedBox(width: 32),
+          Expanded(flex: 2, child: panelDerechoDecorado),
+        ],
+      );
+    } else {
+      return ListView(
+        physics: const BouncingScrollPhysics(),
+        children: [
+          panelIzquierdo,
+          const SizedBox(height: 24), // Espacio vertical entre ambas tarjetas
+          panelDerechoDecorado,
+        ],
+      );
+    }
   }
 
   // VISTA: PESTAÑA DE AUTO-AGENDAMIENTO
