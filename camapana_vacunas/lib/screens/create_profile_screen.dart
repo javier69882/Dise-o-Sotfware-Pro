@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/usuarios/paciente.dart';
-import '../models/usuarios/administrador.dart';
-import '../models/usuarios/secretario.dart';
-import '../models/usuarios/enfermero.dart';
-import '../models/usuarios/medico.dart';
-import '../models/usuarios/persona_usuaria.dart';
 import '../services/mock_database.dart';
-import '../widgets/custom_dialogs.dart';
+
 
 class CreateProfileScreen extends StatefulWidget {
   const CreateProfileScreen({super.key});
@@ -17,386 +12,227 @@ class CreateProfileScreen extends StatefulWidget {
 
 class _CreateProfileScreenState extends State<CreateProfileScreen> {
   final _formKey = GlobalKey<FormState>();
+  final db = MockDatabase();
 
+  // Controladores exclusivos para datos de Paciente
   final _rutCtrl = TextEditingController();
   final _nombresCtrl = TextEditingController();
   final _apellidosCtrl = TextEditingController();
   final _correoCtrl = TextEditingController();
-  final _telefonoCtrl = TextEditingController(); // <-- Mantenemos tu controlador
+  final _telefonoCtrl = TextEditingController();
+  String _previsionSeleccionada = "Fonasa";
 
-  final _departamentoCtrl = TextEditingController();
-  final _idSecretarioCtrl = TextEditingController();
-  final _registroCtrl = TextEditingController();
-  final _unidadAsignadaCtrl = TextEditingController();
-  final _especialidadCtrl = TextEditingController();
-
-  String _rolSeleccionado = "Paciente";
-  String _grupoRiesgoSeleccionado = "Público General";
-
-  final List<String> _opcionesRol = [
-    "Paciente",
-    "Administrador",
-    "Secretario/a", 
-    "Enfermero/a",
-    "Médico",
-  ];
-
-  final List<String> _opcionesRiesgo = [
-    "Adultos Mayores",
-    "Crónicos",
-    "Embarazadas",
-    "Personal de Salud",
-    "Jovenes Sanos",
-    "Público General",
-  ];
-
-  void _crearYGuardar() {
+  void _registrarPaciente() {
     if (_formKey.currentState!.validate()) {
-      PersonaUsuaria nuevoUsuario;
-      DateTime fechaNac = DateTime(1990, 1, 1);
+      // 1. HARDCODEAMOS EL ROL: Solo se pueden crear Pacientes desde aquí
+      var nuevoPaciente = Paciente(
+        rut: _rutCtrl.text.trim(),
+        nombres: _nombresCtrl.text.trim(),
+        apellidos: _apellidosCtrl.text.trim(),
+        correo: _correoCtrl.text.trim(),
+        telefono: _telefonoCtrl.text.trim(),
+        fechaNacimiento: DateTime(1990, 1, 1), // Idealmente agregar un DatePicker luego
+        prevision: _previsionSeleccionada,
+        grupoRiesgo: "Público General", // Por defecto
+        estadoVacunacion: "Sin vacunas", // Por defecto
+      );
 
-      switch (_rolSeleccionado) {
-        case "Administrador":
-          nuevoUsuario = Administrador(
-            rut: _rutCtrl.text,
-            nombres: _nombresCtrl.text,
-            apellidos: _apellidosCtrl.text,
-            correo: _correoCtrl.text,
-            telefono: _telefonoCtrl.text, 
-            fechaNacimiento: fechaNac,
-            departamento: _departamentoCtrl.text.isEmpty ? "General" : _departamentoCtrl.text,
-          );
-          break;
-        case "Secretario/a": 
-          nuevoUsuario = Secretario(
-            rut: _rutCtrl.text,
-            nombres: _nombresCtrl.text,
-            apellidos: _apellidosCtrl.text,
-            correo: _correoCtrl.text,
-            telefono: _telefonoCtrl.text,
-            fechaNacimiento: fechaNac,
-            idSecretario: _idSecretarioCtrl.text.isEmpty ? "SEC-NUEVO" : _idSecretarioCtrl.text,
-          );
-          break;
-        case "Enfermero/a": 
-          nuevoUsuario = Enfermero(
-            rut: _rutCtrl.text,
-            nombres: _nombresCtrl.text,
-            apellidos: _apellidosCtrl.text,
-            correo: _correoCtrl.text,
-            telefono: _telefonoCtrl.text,
-            fechaNacimiento: fechaNac,
-            registro: _registroCtrl.text.isEmpty ? "REG-000" : _registroCtrl.text,
-            unidadAsignada: _unidadAsignadaCtrl.text.isEmpty ? "Vacunatorio General" : _unidadAsignadaCtrl.text,
-          );
-          break;
-        case "Médico":
-          nuevoUsuario = Medico(
-            rut: _rutCtrl.text,
-            nombres: _nombresCtrl.text,
-            apellidos: _apellidosCtrl.text,
-            correo: _correoCtrl.text,
-            telefono: _telefonoCtrl.text,
-            fechaNacimiento: fechaNac,
-            registro: _registroCtrl.text.isEmpty ? "REG-MED" : _registroCtrl.text,
-            especialidad: _especialidadCtrl.text.isEmpty ? "Medicina General" : _especialidadCtrl.text,
-          );
-          break;
-        case "Paciente":
-        default:
-          nuevoUsuario = Paciente(
-            rut: _rutCtrl.text,
-            nombres: _nombresCtrl.text,
-            apellidos: _apellidosCtrl.text,
-            correo: _correoCtrl.text,
-            telefono: _telefonoCtrl.text,
-            fechaNacimiento: fechaNac,
-            prevision: "Fonasa",
-            grupoRiesgo: _grupoRiesgoSeleccionado,
-            estadoVacunacion: "Sin vacunas",
-          );
-          break;
-      }
+      // 2. Guardamos en la base de datos simulada
+      setState(() {
+        db.usuarios.add(nuevoPaciente);
+      });
 
-      MockDatabase().usuarios.add(nuevoUsuario);
-
-      CustomDialogs.showSnackBar(context, 'Perfil de $_rolSeleccionado creado exitosamente');
-
-      Navigator.pop(context);
+      // 3. Notificamos y devolvemos al Login
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Cuenta de paciente creada exitosamente. Por favor, inicia sesión.'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
+      Navigator.pop(context); // Vuelve al login
     }
   }
 
   @override
+  void dispose() {
+    _rutCtrl.dispose();
+    _nombresCtrl.dispose();
+    _apellidosCtrl.dispose();
+    _correoCtrl.dispose();
+    _telefonoCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.primary),
-        title: Text(
-          "Crear Nuevo Perfil",
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.bold,
+      // 1. Mismo fondo del Login para mantener consistencia
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primaryContainer.withOpacity(0.3),
+              Theme.of(context).scaffoldBackgroundColor,
+              colorScheme.primary.withOpacity(0.1),
+            ],
           ),
         ),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: ListView(
-            physics: const BouncingScrollPhysics(),
+        child: Center(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(32),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600), // Un poco más ancho para formularios a dos columnas
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 5),
-                    )
+                      color: colorScheme.primary.withOpacity(0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
                   ],
                 ),
                 child: Form(
                   key: _formKey,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
-                        children: [
-                          Icon(Icons.manage_accounts_rounded, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Datos de la Cuenta",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onBackground,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      DropdownButtonFormField<String>(
-                        value: _rolSeleccionado,
-                        decoration: InputDecoration(
-                          labelText: "Tipo de Perfil (Rol)",
-                          prefixIcon: Icon(Icons.badge_rounded, color: Theme.of(context).colorScheme.primary),
-                          fillColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
-                          filled: true,
+                      // Botón para volver atrás fácilmente
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          onPressed: () => Navigator.pop(context),
+                          color: colorScheme.onSurfaceVariant,
                         ),
-                        items: _opcionesRol.map((rol) => DropdownMenuItem(value: rol, child: Text(rol))).toList(),
-                        onChanged: (val) => setState(() => _rolSeleccionado = val!),
                       ),
+                      const SizedBox(height: 8),
                       
+                      // Encabezado
+                      Text(
+                        "Crear Cuenta",
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                          letterSpacing: -0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Portal ciudadano",
+                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 32),
-                      const Divider(),
-                      const SizedBox(height: 24),
 
-                      Row(
-                        children: [
-                          Icon(Icons.person_pin_rounded, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Información Personal",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onBackground,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
+                      // Campos de Texto Organizados
                       TextFormField(
                         controller: _rutCtrl,
                         decoration: InputDecoration(
                           labelText: "RUT (Ej: 12.345.678-9)",
-                          border: const OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.credit_card_rounded, color: Theme.of(context).colorScheme.primary),
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty) return 'Este campo es obligatorio.';
-                          if (!RegExp(r"\d{1,2}\.\d{3}\.\d{3}-[\dKk]$").hasMatch(value)) return 'No tiene el formato solicitado';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _nombresCtrl,
-                        decoration: InputDecoration(
-                          labelText: "Nombres",
-                          border: const OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.primary),
+                          prefixIcon: const Icon(Icons.badge_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _apellidosCtrl,
-                        decoration: InputDecoration(
-                          labelText: "Apellidos",
-                          border: const OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.people_alt_rounded, color: Theme.of(context).colorScheme.primary),
-                        ),
-                        validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _correoCtrl,
-                        decoration: InputDecoration(
-                          labelText: "Correo Electrónico",
-                          border: const OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.email_rounded, color: Theme.of(context).colorScheme.primary),
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty) return 'Este campo es obligatorio.';
-                          if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&ñ'*+-/=?^_`{|}~]+@[a-zA-Z0-9ñ]+\.[a-zA-Zñ]+").hasMatch(value)) {
-                            return 'No tiene formato de correo válido';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // --- AQUÍ INTEGRAMOS TU CAMPO DE TELÉFONO CON LA NUEVA UI ---
-                      TextFormField(
-                        controller: _telefonoCtrl,
-                        decoration: InputDecoration(
-                          hintText: '+56912345678 o 912345678',
-                          labelText: 'Teléfono de contacto',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.phone_rounded, color: Theme.of(context).colorScheme.primary),
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty) return 'Este campo es obligatorio.';
-                          if (value[0] == '+') {
-                            if (!RegExp(r'^\+[0-9]+$').hasMatch(value)) {
-                              return "Asegúrate de que solo hay números después del +";
-                            } else if (value.length < 12 || value.length > 13) {
-                              return "Chequea el largo";
-                            }
-                          } else {
-                            if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                              return "Asegúrate de que solo hay números";
-                            } else if (value.length < 8 || value.length > 9) {
-                              return "Chequea el largo";
-                            }
-                          }
-                          return null;
-                        },
-                      ),
                       
-                      const SizedBox(height: 32),
-                      const Divider(),
-                      const SizedBox(height: 24),
-
+                      // Ejemplo de campos en fila para ahorrar espacio vertical
                       Row(
                         children: [
-                          Icon(Icons.work_rounded, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Información Específica del Rol",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onBackground,
+                          Expanded(
+                            child: TextFormField(
+                              controller: _nombresCtrl,
+                              decoration: InputDecoration(
+                                labelText: "Nombres",
+                                prefixIcon: const Icon(Icons.person_outline),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _apellidosCtrl,
+                              decoration: InputDecoration(
+                                labelText: "Apellidos",
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
 
-                      if (_rolSeleccionado == "Paciente") ...[
-                        DropdownButtonFormField<String>(
-                          value: _grupoRiesgoSeleccionado,
-                          decoration: InputDecoration(
-                            labelText: "Grupo de Riesgo",
-                            border: const OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.health_and_safety_rounded, color: Theme.of(context).colorScheme.primary),
-                          ),
-                          items: _opcionesRiesgo.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                          onChanged: (val) => setState(() => _grupoRiesgoSeleccionado = val!),
+                      TextFormField(
+                        controller: _correoCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: "Correo Electrónico",
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      ],
+                        validator: (v) => v!.contains('@') ? null : "Correo inválido",
+                      ),
+                      const SizedBox(height: 16),
 
-                      if (_rolSeleccionado == "Administrador") ...[
-                        TextFormField(
-                          controller: _departamentoCtrl,
-                          decoration: InputDecoration(
-                            labelText: "Departamento a Cargo",
-                            border: const OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.domain_rounded, color: Theme.of(context).colorScheme.primary),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _telefonoCtrl,
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                labelText: "Teléfono",
+                                prefixIcon: const Icon(Icons.phone_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-
-                      if (_rolSeleccionado == "Secretario/a") ...[
-                        TextFormField(
-                          controller: _idSecretarioCtrl,
-                          decoration: InputDecoration(
-                            labelText: "ID de Secretario (Ej: SEC-002)",
-                            border: const OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.assignment_ind_rounded, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _previsionSeleccionada,
+                              decoration: InputDecoration(
+                                labelText: "Previsión",
+                                prefixIcon: const Icon(Icons.health_and_safety_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              items: ["Fonasa", "Isapre", "Particular"].map((String val) {
+                                return DropdownMenuItem(value: val, child: Text(val));
+                              }).toList(),
+                              onChanged: (newVal) => setState(() => _previsionSeleccionada = newVal!),
+                            ),
                           ),
-                        ),
-                      ],
-
-                      if (_rolSeleccionado == "Enfermero/a" || _rolSeleccionado == "Médico") ...[
-                        TextFormField(
-                          controller: _registroCtrl,
-                          decoration: InputDecoration(
-                            labelText: "Registro Nacional de Salud",
-                            border: const OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.medical_information_rounded, color: Theme.of(context).colorScheme.primary),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      if (_rolSeleccionado == "Enfermero/a") ...[
-                        TextFormField(
-                          controller: _unidadAsignadaCtrl,
-                          decoration: InputDecoration(
-                            labelText: "Unidad Asignada (Ej: Vacunatorio B)",
-                            border: const OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.vaccines_rounded, color: Theme.of(context).colorScheme.primary),
-                          ),
-                        ),
-                      ],
-
-                      if (_rolSeleccionado == "Médico") ...[
-                        TextFormField(
-                          controller: _especialidadCtrl,
-                          decoration: InputDecoration(
-                            labelText: "Especialidad (Ej: Inmunología)",
-                            border: const OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.psychology_rounded, color: Theme.of(context).colorScheme.primary),
-                          ),
-                        ),
-                      ],
-
+                        ],
+                      ),
                       const SizedBox(height: 40),
-                      ElevatedButton.icon(
-                        onPressed: _crearYGuardar,
-                        icon: const Icon(Icons.save_rounded),
-                        label: Text("Registrar $_rolSeleccionado"),
+
+                      // Botón de Registro
+                      ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 60),
+                          minimumSize: const Size(double.infinity, 56),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
+                        onPressed: _registrarPaciente,
+                        child: const Text("Registrarme como Paciente", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

@@ -7,9 +7,11 @@ import '../models/campanas/campana.dart';
 import '../models/centros/centro_vacunacion.dart';
 import '../widgets/custom_dialogs.dart';
 import '../utils/date_formatter.dart';
+import '../widgets/header_actions.dart';
 
 class SecretarioDashboard extends StatefulWidget {
-  const SecretarioDashboard({super.key});
+  final VoidCallback onLogout;
+  const SecretarioDashboard({super.key, required this.onLogout});
 
   @override
   State<SecretarioDashboard> createState() => _SecretarioDashboardState();
@@ -17,15 +19,14 @@ class SecretarioDashboard extends StatefulWidget {
 
 class _SecretarioDashboardState extends State<SecretarioDashboard> {
   final db = MockDatabase();
+  
+  // Controladores y Estados de la Búsqueda
+  final _searchCtrl = TextEditingController();
+  Paciente? _pacienteEncontrado;
+  bool _isSearching = false; // Controla el círculo de carga
+  String? _errorMessage;     // Controla el mensaje de error en línea
 
-  Campana? _campanaSeleccionada;
-  TramoCampana? _tramoSeleccionado;
-  CentroVacunacion? _centroSeleccionado;
-
-  DateTime? _fechaSeleccionada;
-  TimeOfDay? _horaSeleccionada;
-  String? _rutBeneficiarioSeleccionado;
-
+  // Lógica de bloques horarios
   List<TimeOfDay> _generarBloquesHorarios(String horarioAtencion) {
     try {
       var partes = horarioAtencion.split('-');
@@ -41,8 +42,7 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
       TimeOfDay actual = TimeOfDay(hour: horaInicio, minute: minInicio);
       TimeOfDay limite = TimeOfDay(hour: horaFin, minute: minFin);
 
-      while (actual.hour < limite.hour ||
-          (actual.hour == limite.hour && actual.minute < limite.minute)) {
+      while (actual.hour < limite.hour || (actual.hour == limite.hour && actual.minute < limite.minute)) {
         bloques.add(actual);
         int nextMin = actual.minute + 30;
         int nextHour = actual.hour;
@@ -58,21 +58,490 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
     }
   }
 
-  Future<void> _seleccionarFecha(BuildContext context) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-      locale: const Locale('es', 'ES'),
-    );
+  // --- NUEVA LÓGICA DE BÚSQUEDA ---
+  Future<void> _buscarPaciente() async {
+    String query = _searchCtrl.text.trim().toLowerCase();
+    if (query.isEmpty) return;
 
-    if (pickedDate != null && context.mounted) {
-      setState(() {
-        _fechaSeleccionada = pickedDate;
-        _horaSeleccionada = null;
-      });
+    // Oculta el teclado en móviles
+    FocusScope.of(context).unfocus();
+
+    // 1. Iniciamos el estado de carga
+    setState(() {
+      _isSearching = true;
+      _errorMessage = null;
+      _pacienteEncontrado = null;
+    });
+
+    // Simulamos un pequeño retraso de red para que se aprecie la animación de carga
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (!mounted) return;
+
+    // 2. Búsqueda Flexible (Por RUT o porciones de Nombre/Apellido)
+    var pacientes = db.usuarios.whereType<Paciente>().where((p) {
+      bool coincideRut = p.rut.toLowerCase().contains(query);
+      bool coincideNombre = p.nombres.toLowerCase().contains(query) || p.apellidos.toLowerCase().contains(query);
+      return coincideRut || coincideNombre;
+    }).toList();
+
+    // 3. Resolvemos el estado
+    setState(() {
+      _isSearching = false;
+      if (pacientes.isNotEmpty) {
+        _pacienteEncontrado = pacientes.first; // Seleccionamos la mejor coincidencia
+      } else {
+        _errorMessage = "No se encontraron registros para '$query'.";
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (db.usuarioActivo == null) {
+      Future.microtask(() => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false));
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)),
+      );
     }
+
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          // ENCABEZADO
+          Container(
+            padding: const EdgeInsets.fromLTRB(32, 50, 32, 24),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+              boxShadow: [BoxShadow(color: colorScheme.primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 10))],
+            ),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("Hola, ${db.usuarioActivo?.nombres ?? 'Secretari@'} 👋", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: colorScheme.primary, letterSpacing: -0.5)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)),
+                      child: Text("Módulo de Recepción • ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}", style: TextStyle(fontSize: 14, color: colorScheme.onPrimaryContainer, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _mostrarFormularioCrearPaciente,
+                      icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                      label: const Text("Nuevo Paciente"),
+                      style: ElevatedButton.styleFrom(backgroundColor: colorScheme.tertiary, foregroundColor: colorScheme.onTertiary, elevation: 0, minimumSize: const Size(0, 48)),
+                    ),
+                    HeaderActions(onLogout: widget.onLogout, usuarioActivo: db.usuarioActivo!),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // CUERPO PRINCIPAL (Buscador y Resultados)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  
+                  // --- BARRA DE BÚSQUEDA REDISEÑADA ---
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        )
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _buscarPaciente(),
+                      decoration: InputDecoration(
+                        hintText: "Buscar por RUT, Nombre o Apellido...",
+                        prefixIcon: Icon(Icons.search_rounded, color: colorScheme.primary),
+                        border: InputBorder.none, 
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                        suffixIcon: Padding(
+                          padding: const EdgeInsets.only(right: 8.0, top: 4.0, bottom: 4.0),
+                          child: ElevatedButton(
+                            onPressed: _isSearching ? null : _buscarPaciente,
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            child: const Text("Buscar"),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // --- ÁREA DE RESULTADOS DINÁMICA ---
+                  Expanded(
+                    child: _isSearching
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(color: colorScheme.primary),
+                                const SizedBox(height: 16),
+                                Text("Buscando en la base de datos...", style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                              ],
+                            ),
+                          )
+                        : _errorMessage != null
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.person_off_rounded, size: 64, color: colorScheme.error.withOpacity(0.6)),
+                                    const SizedBox(height: 16),
+                                    Text(_errorMessage!, style: TextStyle(color: colorScheme.error, fontSize: 18, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 8),
+                                    Text("Verifica el dato o registra un nuevo paciente.", style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                                  ],
+                                ),
+                              )
+                            : _pacienteEncontrado == null
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.badge_outlined, size: 64, color: colorScheme.outlineVariant),
+                                        const SizedBox(height: 16),
+                                        Text("Ingrese un RUT o Nombre para localizar la ficha.", style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16)),
+                                      ],
+                                    ),
+                                  )
+                                : _buildFichaPaciente(_pacienteEncontrado!, colorScheme),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- COMPONENTE: FICHA DEL PACIENTE ---
+  Widget _buildFichaPaciente(Paciente paciente, ColorScheme colorScheme) {
+    List<CitaVacunacion> citasPaciente = [];
+    for (var c in db.centros) {
+      citasPaciente.addAll(c.citasAgendadas.where((cita) => cita.rutPaciente == paciente.rut));
+    }
+    
+    var pendientes = citasPaciente.where((c) => c.estado == "Programada" || c.estado == "Agendada").toList();
+    var historial = citasPaciente.where((c) => c.estado == "Completada" || c.estado == "Cancelada").toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 32, backgroundColor: colorScheme.primaryContainer,
+                child: Text(paciente.nombres[0], style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: colorScheme.primary)),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("${paciente.nombres} ${paciente.apellidos}", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: colorScheme.onBackground)),
+                    const SizedBox(height: 4),
+                    Text("RUT: ${paciente.rut} | Contacto: ${paciente.telefono}", style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _mostrarFormularioAgendamiento(paciente),
+                icon: const Icon(Icons.calendar_month_rounded),
+                label: const Text("Agendar Cita"),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.access_time_rounded, color: colorScheme.secondary),
+                        const SizedBox(width: 8),
+                        Text("Próximas Citas", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.onBackground)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: pendientes.isEmpty
+                          ? Text("No hay citas programadas.", style: TextStyle(color: colorScheme.onSurfaceVariant))
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: pendientes.length,
+                              itemBuilder: (context, index) => _buildTarjetaCita(pendientes[index], colorScheme),
+                            ),
+                    )
+                  ],
+                ),
+              ),
+              const SizedBox(width: 32),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.history_rounded, color: colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text("Historial de Atención", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.onBackground)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: historial.isEmpty
+                          ? Text("No registra atenciones previas.", style: TextStyle(color: colorScheme.onSurfaceVariant))
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: historial.length,
+                              itemBuilder: (context, index) => _buildTarjetaCita(historial[index], colorScheme),
+                            ),
+                    )
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTarjetaCita(CitaVacunacion cita, ColorScheme colorScheme) {
+    String centroNombre = db.centros.firstWhere((c) => c.idCentro == cita.idCentro).nombre;
+    bool esPasada = cita.estado == "Completada" || cita.estado == "Cancelada";
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: esPasada ? colorScheme.surface : colorScheme.primaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: esPasada ? colorScheme.outlineVariant : colorScheme.primary.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: esPasada ? colorScheme.secondaryContainer : colorScheme.primary, shape: BoxShape.circle),
+            child: Icon(Icons.vaccines_rounded, color: esPasada ? colorScheme.onSecondaryContainer : colorScheme.onPrimary),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(DateFormatter.formatDateTime(cita.fechaHora), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(centroNombre, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14)),
+              ],
+            ),
+          ),
+          Text(cita.estado, style: TextStyle(fontWeight: FontWeight.bold, color: esPasada ? colorScheme.onSurfaceVariant : colorScheme.primary)),
+        ],
+      ),
+    );
+  }
+
+  // --- DIÁLOGOS MODERNOS ---
+
+  void _mostrarFormularioAgendamiento(Paciente pacienteDestino) {
+    if (db.campanas.isEmpty) {
+      CustomDialogs.showMessage(context, "Atención", "No hay campañas activas.");
+      return;
+    }
+
+    Campana? campanaSeleccionada = db.campanas.first;
+    TramoCampana? tramoSeleccionado = campanaSeleccionada.tramos.isNotEmpty ? campanaSeleccionada.tramos.first : null;
+    CentroVacunacion? centroSeleccionado;
+    DateTime? fechaSeleccionada;
+    TimeOfDay? horaSeleccionada;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            
+            List<CentroVacunacion> centrosConStock = db.centros.where((c) => c.tieneStockDeVacuna(campanaSeleccionada!.vacuna.idVacuna)).toList();
+            if (centroSeleccionado != null && !centrosConStock.contains(centroSeleccionado)) {
+              centroSeleccionado = null; horaSeleccionada = null;
+            }
+            centroSeleccionado ??= centrosConStock.isNotEmpty ? centrosConStock.first : null;
+            List<TimeOfDay> horasDisponibles = centroSeleccionado != null ? _generarBloquesHorarios(centroSeleccionado!.horarioAtencion) : [];
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 500),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: colorScheme.primary.withOpacity(0.15), blurRadius: 30, offset: const Offset(0, 10))]),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: colorScheme.primaryContainer.withOpacity(0.5), shape: BoxShape.circle), child: Icon(Icons.event_available_rounded, size: 36, color: colorScheme.primary)),
+                      const SizedBox(height: 16),
+                      Text("Agendar Cita", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: colorScheme.primary, letterSpacing: -0.5)),
+                      const SizedBox(height: 8),
+                      Text("Paciente: ${pacienteDestino.nombres} ${pacienteDestino.apellidos}", style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 32),
+
+                      DropdownButtonFormField<Campana>(
+                        value: campanaSeleccionada,
+                        decoration: const InputDecoration(labelText: "Campaña Activa", prefixIcon: Icon(Icons.campaign_rounded)),
+                        items: db.campanas.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
+                        onChanged: (val) => setStateDialog(() { campanaSeleccionada = val; tramoSeleccionado = val!.tramos.isNotEmpty ? val.tramos.first : null; }),
+                      ),
+                      const SizedBox(height: 16),
+                      if (campanaSeleccionada!.tramos.isNotEmpty) ...[
+                        DropdownButtonFormField<TramoCampana>(
+                          value: tramoSeleccionado,
+                          decoration: const InputDecoration(labelText: "Tramo de Prioridad", prefixIcon: Icon(Icons.groups_rounded)),
+                          items: campanaSeleccionada!.tramos.map((t) => DropdownMenuItem(value: t, child: Text(t.nombreTramo))).toList(),
+                          onChanged: (val) => setStateDialog(() => tramoSeleccionado = val),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      DropdownButtonFormField<CentroVacunacion>(
+                        value: centroSeleccionado,
+                        decoration: const InputDecoration(labelText: "Sede de Vacunación", prefixIcon: Icon(Icons.local_hospital_rounded)),
+                        items: centrosConStock.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
+                        onChanged: (val) => setStateDialog(() { centroSeleccionado = val; horaSeleccionada = null; }),
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: InkWell(
+                              onTap: () async {
+                                var picked = await showDatePicker(context: context, initialDate: DateTime.now().add(const Duration(days: 1)), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 90)));
+                                if (picked != null) setStateDialog(() { fechaSeleccionada = picked; horaSeleccionada = null; });
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                                decoration: BoxDecoration(border: Border.all(color: colorScheme.outlineVariant), borderRadius: BorderRadius.circular(12)),
+                                child: Text(fechaSeleccionada == null ? "Elegir Fecha" : DateFormatter.formatDateOnly(fechaSeleccionada!), style: TextStyle(color: fechaSeleccionada == null ? colorScheme.onSurfaceVariant : colorScheme.onBackground)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 2,
+                            child: DropdownButtonFormField<TimeOfDay>(
+                              value: horaSeleccionada,
+                              decoration: const InputDecoration(labelText: "Bloque"),
+                              disabledHint: const Text("Día"),
+                              items: horasDisponibles.map((h) => DropdownMenuItem(value: h, child: Text("${h.hour.toString().padLeft(2, '0')}:${h.minute.toString().padLeft(2, '0')}"))).toList(),
+                              onChanged: fechaSeleccionada == null ? null : (val) => setStateDialog(() => horaSeleccionada = val),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                              child: const Text("Cancelar"),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                              onPressed: (tramoSeleccionado == null || centroSeleccionado == null || fechaSeleccionada == null || horaSeleccionada == null) ? null : () {
+                                DateTime fechaHoraFinal = DateTime(fechaSeleccionada!.year, fechaSeleccionada!.month, fechaSeleccionada!.day, horaSeleccionada!.hour, horaSeleccionada!.minute);
+                                var cita = centroSeleccionado!.crearCita(fechaHoraFinal, pacienteDestino, tramoSeleccionado!.idTramo);
+                                if (cita != null) {
+                                  Navigator.pop(context);
+                                  CustomDialogs.showSnackBar(context, "Cita agendada correctamente.");
+                                  setState(() {}); 
+                                } else {
+                                  CustomDialogs.showMessage(context, "Error", "Sin cupos disponibles.");
+                                }
+                              },
+                              child: const Text("Confirmar Cita"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        );
+      }
+    );
   }
 
   void _mostrarFormularioCrearPaciente() {
@@ -87,684 +556,82 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
     showDialog(
       context: context,
       builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text("Registrar Paciente (Asistido)"),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: rutCtrl,
-                        decoration: const InputDecoration(
-                          labelText: "RUT Paciente",
-                          hintText: '12.345.678-9',
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              backgroundColor: Colors.transparent,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 450),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(24)),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: colorScheme.tertiary.withOpacity(0.2), shape: BoxShape.circle), child: Icon(Icons.person_add_rounded, size: 36, color: colorScheme.tertiary)),
+                        const SizedBox(height: 16),
+                        Text("Registrar Paciente", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: colorScheme.primary)),
+                        const SizedBox(height: 32),
+                        
+                        TextFormField(controller: rutCtrl, decoration: const InputDecoration(labelText: "RUT Paciente", prefixIcon: Icon(Icons.badge_rounded)), validator: (v) => v!.isEmpty ? "Obligatorio" : null),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(child: TextFormField(controller: nombresCtrl, decoration: const InputDecoration(labelText: "Nombres"), validator: (v) => v!.isEmpty ? "Obligatorio" : null)),
+                            const SizedBox(width: 16),
+                            Expanded(child: TextFormField(controller: apellidosCtrl, decoration: const InputDecoration(labelText: "Apellidos"), validator: (v) => v!.isEmpty ? "Obligatorio" : null)),
+                          ],
                         ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty)
-                            return 'Este campo es obligatorio.';
-                          if (!RegExp(
-                            r"\d{1,2}\.\d{3}\.\d{3}-[\dKk]$",
-                          ).hasMatch(value))
-                            return 'No tiene el formato solicitado';
-                          return null;
-                        },
-                      ),
-                      TextFormField(
-                        controller: nombresCtrl,
-                        decoration: const InputDecoration(labelText: "Nombres"),
-                        validator: (v) => v!.isEmpty ? "Obligatorio" : null,
-                      ),
-                      TextFormField(
-                        controller: apellidosCtrl,
-                        decoration: const InputDecoration(
-                          labelText: "Apellidos",
+                        const SizedBox(height: 16),
+                        TextFormField(controller: correoCtrl, decoration: const InputDecoration(labelText: "Correo Electrónico"), keyboardType: TextInputType.emailAddress, validator: (v) => v!.isEmpty ? "Obligatorio" : null),
+                        const SizedBox(height: 16),
+                        TextFormField(controller: telefonoCtrl, decoration: const InputDecoration(labelText: "Teléfono de contacto"), keyboardType: TextInputType.phone),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: grupoRiesgo,
+                          decoration: const InputDecoration(labelText: "Grupo de Riesgo"),
+                          items: ["Adultos Mayores", "Crónicos", "Embarazadas", "Jovenes Sanos", "Público General"].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                          onChanged: (val) => setStateDialog(() => grupoRiesgo = val!),
                         ),
-                        validator: (v) => v!.isEmpty ? "Obligatorio" : null,
-                      ),
-                      TextFormField(
-                        controller: correoCtrl,
-                        decoration: const InputDecoration(
-                          labelText: "Correo Electrónico",
-                          hintText: 'correo@address.cl',
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty)
-                            return 'Este campo es obligatorio.';
-                          if (!RegExp(
-                            r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&ñ'*+-/=?^_`{|}~]+@[a-zA-Z0-9ñ]+\.[a-zA-Zñ]+",
-                          ).hasMatch(value)) {
-                            return 'No tiene formato de correo válido';
-                          }
-                          return null;
-                        },
-                      ),
-                      TextFormField(
-                        controller: telefonoCtrl,
-                        decoration: InputDecoration(
-                          hintText: '+56912345678 o 912345678',
-                          labelText: 'Teléfono de contacto',
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty)
-                            return 'Este campo es obligatorio.';
-                          if (value[0] == '+') {
-                            if (!RegExp(r'^\+[0-9]+$').hasMatch(value)) {
-                              return "Asegúrate de que solo hay números después del +";
-                            } else if (value.length < 12 || value.length > 13) {
-                              return "Chequea el largo";
-                            }
-                          } else {
-                            if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                              return "Asegúrate de que solo hay números";
-                            } else if (value.length < 8 || value.length > 9) {
-                              return "Chequea el largo";
-                            }
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: grupoRiesgo,
-                        decoration: const InputDecoration(
-                          labelText: "Grupo de Riesgo",
-                          border: OutlineInputBorder(),
-                        ),
-                        items:
-                            [
-                                  "Adultos Mayores",
-                                  "Crónicos",
-                                  "Embarazadas",
-                                  "Jovenes Sanos",
-                                  "Público General",
-                                ]
-                                .map(
-                                  (g) => DropdownMenuItem(
-                                    value: g,
-                                    child: Text(g),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (val) =>
-                            setStateDialog(() => grupoRiesgo = val!),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancelar"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (formKey.currentState!.validate()) {
-                      var nuevoPaciente = Paciente(
-                        rut: rutCtrl.text,
-                        nombres: nombresCtrl.text,
-                        apellidos: apellidosCtrl.text,
-                        correo: correoCtrl.text,
-                        telefono: telefonoCtrl.text,
-                        fechaNacimiento: DateTime(1990, 1, 1),
-                        rutSecretarioCreador: db.usuarioActivo!.rut,
-                        prevision: "Fonasa",
-                        grupoRiesgo: grupoRiesgo,
-                        estadoVacunacion: "Sin vacunas",
-                      );
-                      setState(() {
-                        db.usuarios.add(nuevoPaciente);
-                        _rutBeneficiarioSeleccionado = nuevoPaciente.rut;
-                      });
-                      Navigator.pop(context);
-                      CustomDialogs.showSnackBar(
-                        context,
-                        "Paciente registrado e integrado al selector.",
-                      );
-                    }
-                  },
-                  child: const Text("Guardar Perfil"),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
+                        const SizedBox(height: 32),
 
-  @override
-  Widget build(BuildContext context) {
-    // LÓGICA DE NEGOCIO
-    if (db.campanas.isEmpty)
-      return const Center(child: Text("No hay campañas activas."));
-
-    _campanaSeleccionada ??= db.campanas.first;
-    if (!_campanaSeleccionada!.tramos.contains(_tramoSeleccionado)) {
-      _tramoSeleccionado = _campanaSeleccionada!.tramos.isNotEmpty
-          ? _campanaSeleccionada!.tramos.first
-          : null;
-    }
-
-    List<CentroVacunacion> centrosConStock = db.centros
-        .where(
-          (c) => c.tieneStockDeVacuna(_campanaSeleccionada!.vacuna.idVacuna),
-        )
-        .toList();
-
-    if (_centroSeleccionado != null &&
-        !centrosConStock.contains(_centroSeleccionado)) {
-      _centroSeleccionado = null;
-      _horaSeleccionada = null;
-    }
-    _centroSeleccionado ??= centrosConStock.isNotEmpty
-        ? centrosConStock.first
-        : null;
-
-    List<Paciente> listaPacientes = db.usuarios.whereType<Paciente>().toList();
-    _rutBeneficiarioSeleccionado ??= listaPacientes.isNotEmpty
-        ? listaPacientes.first.rut
-        : db.usuarioActivo!.rut;
-
-    List<CitaVacunacion> todasLasCitas = [];
-    for (var c in db.centros) {
-      todasLasCitas.addAll(c.citasAgendadas);
-    }
-
-    List<TimeOfDay> horasDisponibles = _centroSeleccionado != null
-        ? _generarBloquesHorarios(_centroSeleccionado!.horarioAtencion)
-        : [];
-
-    // CONSTRUCCIÓN DE LA VISTA
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Column(
-        children: [
-          // ENCABEZADO
-          Container(
-            padding: const EdgeInsets.fromLTRB(32, 50, 32, 24),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Hola, ${db.usuarioActivo?.nombres ?? 'Secretari@'} 👋",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: Theme.of(context).colorScheme.primary,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        "Panel de Recepción • ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: _mostrarFormularioCrearPaciente,
-                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-                  label: const Text("Nuevo Paciente"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.tertiary,
-                    foregroundColor: Theme.of(context).colorScheme.onTertiary,
-                    elevation: 0,
-                    minimumSize: const Size(0, 48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // CUERPO PRINCIPAL
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Módulo de Agendamiento",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onBackground,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // FORMULARIO DE AGENDAMIENTO
-                  DropdownButtonFormField<String>(
-                    value: _rutBeneficiarioSeleccionado,
-                    decoration: InputDecoration(
-                      labelText: "Beneficiario de la Hora Médica",
-                      prefixIcon: Icon(
-                        Icons.badge_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      fillColor: Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer.withOpacity(0.5),
-                      filled: true,
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: db.usuarioActivo!.rut,
-                        child: Text(
-                          "✨ Agendar para mí mismo (${db.usuarioActivo!.nombres})",
-                        ),
-                      ),
-                      ...listaPacientes.map(
-                        (p) => DropdownMenuItem(
-                          value: p.rut,
-                          child: Text("${p.nombres} ${p.apellidos} (${p.rut})"),
-                        ),
-                      ),
-                    ],
-                    onChanged: (val) =>
-                        setState(() => _rutBeneficiarioSeleccionado = val),
-                  ),
-                  const SizedBox(height: 16),
-
-                  DropdownButtonFormField<Campana>(
-                    value: _campanaSeleccionada,
-                    decoration: InputDecoration(
-                      labelText: "Campaña Activa",
-                      prefixIcon: Icon(
-                        Icons.campaign_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    items: db.campanas
-                        .map(
-                          (c) => DropdownMenuItem(
-                            value: c,
-                            child: Text("${c.nombre} (${c.vacuna.nombre})"),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) => setState(() {
-                      _campanaSeleccionada = val;
-                      _tramoSeleccionado = val!.tramos.isNotEmpty
-                          ? val.tramos.first
-                          : null;
-                    }),
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (_campanaSeleccionada!.tramos.isNotEmpty) ...[
-                    DropdownButtonFormField<TramoCampana>(
-                      value: _tramoSeleccionado,
-                      decoration: InputDecoration(
-                        labelText: "Tramo de Prioridad",
-                        prefixIcon: Icon(
-                          Icons.people_outline,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      items: _campanaSeleccionada!.tramos
-                          .map(
-                            (t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(
-                                "${t.nombreTramo} -> ${t.poblacionObjetivo}",
+                        Row(
+                          children: [
+                            Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Cancelar"))),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                onPressed: () {
+                                  if (formKey.currentState!.validate()) {
+                                    var nuevoPaciente = Paciente(rut: rutCtrl.text, nombres: nombresCtrl.text, apellidos: apellidosCtrl.text, correo: correoCtrl.text, telefono: telefonoCtrl.text, fechaNacimiento: DateTime(1990), rutSecretarioCreador: db.usuarioActivo!.rut, prevision: "Fonasa", grupoRiesgo: grupoRiesgo, estadoVacunacion: "Sin vacunas");
+                                    setState(() {
+                                      db.usuarios.add(nuevoPaciente);
+                                      _searchCtrl.text = nuevoPaciente.rut; // Autocompletar búsqueda
+                                    });
+                                    Navigator.pop(context);
+                                    _buscarPaciente(); // Cargar ficha inmediatamente
+                                    CustomDialogs.showSnackBar(context, "Paciente registrado correctamente.");
+                                  }
+                                },
+                                child: const Text("Guardar"),
                               ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => _tramoSeleccionado = val),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  DropdownButtonFormField<CentroVacunacion>(
-                    value: _centroSeleccionado,
-                    decoration: InputDecoration(
-                      labelText: "Sede de Vacunación",
-                      prefixIcon: Icon(
-                        Icons.local_hospital_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    items: centrosConStock
-                        .map(
-                          (c) =>
-                              DropdownMenuItem(value: c, child: Text(c.nombre)),
-                        )
-                        .toList(),
-                    onChanged: (val) => setState(() {
-                      _centroSeleccionado = val;
-                      _horaSeleccionada = null;
-                    }),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // SELECTOR DE FECHA Y HORA
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: InkWell(
-                          onTap: () => _seleccionarFecha(context),
-                          borderRadius: BorderRadius.circular(15),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.outlineVariant,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_month_rounded,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  _fechaSeleccionada == null
-                                      ? "Seleccionar Fecha"
-                                      : DateFormatter.formatDateOnly(
-                                          _fechaSeleccionada!,
-                                        ),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: _fechaSeleccionada == null
-                                        ? Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onBackground,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 2,
-                        child: DropdownButtonFormField<TimeOfDay>(
-                          value: _horaSeleccionada,
-                          decoration: InputDecoration(
-                            labelText: "Bloque",
-                            prefixIcon: Icon(
-                              Icons.access_time_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          disabledHint: const Text("Seleccione Día"),
-                          items: horasDisponibles
-                              .map(
-                                (h) => DropdownMenuItem(
-                                  value: h,
-                                  child: Text(
-                                    "${h.hour.toString().padLeft(2, '0')}:${h.minute.toString().padLeft(2, '0')}",
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: _fechaSeleccionada == null
-                              ? null
-                              : (val) =>
-                                    setState(() => _horaSeleccionada = val),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // BOTÓN DE AGENDAR
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 60),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    icon: const Icon(
-                      Icons.check_circle_outline_rounded,
-                      size: 24,
-                    ),
-                    label: const Text(
-                      "Confirmar Cita Médica",
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    onPressed:
-                        (_tramoSeleccionado == null ||
-                            _centroSeleccionado == null ||
-                            _fechaSeleccionada == null ||
-                            _horaSeleccionada == null)
-                        ? null
-                        : () {
-                            Paciente pacienteDestino;
-                            if (_rutBeneficiarioSeleccionado ==
-                                db.usuarioActivo!.rut) {
-                              pacienteDestino = Paciente(
-                                rut: db.usuarioActivo!.rut,
-                                nombres: db.usuarioActivo!.nombres,
-                                apellidos: db.usuarioActivo!.apellidos,
-                                correo: db.usuarioActivo!.correo,
-                                telefono: "S/N",
-                                fechaNacimiento: DateTime.now(),
-                                prevision: "Fonasa",
-                                grupoRiesgo: "Público General",
-                                estadoVacunacion: "Sin vacunas",
-                              );
-                            } else {
-                              pacienteDestino =
-                                  db.usuarios.firstWhere(
-                                        (u) =>
-                                            u.rut ==
-                                            _rutBeneficiarioSeleccionado,
-                                      )
-                                      as Paciente;
-                            }
-
-                            DateTime fechaHoraFinal = DateTime(
-                              _fechaSeleccionada!.year,
-                              _fechaSeleccionada!.month,
-                              _fechaSeleccionada!.day,
-                              _horaSeleccionada!.hour,
-                              _horaSeleccionada!.minute,
-                            );
-
-                            CitaVacunacion? cita = _centroSeleccionado!
-                                .crearCita(
-                                  fechaHoraFinal,
-                                  pacienteDestino,
-                                  _tramoSeleccionado!.idTramo,
-                                );
-
-                            if (cita != null) {
-                              CustomDialogs.showMessage(
-                                context,
-                                "Éxito",
-                                "Cita agendada correctamente en ${_centroSeleccionado!.nombre}.",
-                              );
-                              setState(() {
-                                _fechaSeleccionada = null;
-                                _horaSeleccionada = null;
-                              });
-                            } else {
-                              CustomDialogs.showMessage(
-                                context,
-                                "Error",
-                                "Sin cupos para el bloque horario.",
-                              );
-                            }
-                          },
-                  ),
-
-                  const SizedBox(height: 40),
-                  const Divider(height: 1),
-                  const SizedBox(height: 24),
-
-                  // HISTORIAL DE CITAS (Tarjetas flotantes)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.history_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Historial de Citas",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onBackground,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: todasLasCitas.length,
-                    itemBuilder: (context, index) {
-                      var c = todasLasCitas[index];
-                      var centroNombre = db.centros
-                          .firstWhere((centro) => centro.idCentro == c.idCentro)
-                          .nombre;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 8,
-                          ),
-                          leading: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.vaccines_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          title: Text(
-                            "RUT: ${c.rutPaciente}",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              "$centroNombre\n${DateFormatter.formatDateTime(c.fechaHora)}",
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.secondaryContainer,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              c.estado,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSecondaryContainer,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          }
+        );
+      }
     );
   }
 }

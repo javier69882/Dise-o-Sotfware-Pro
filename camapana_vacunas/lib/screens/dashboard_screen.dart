@@ -5,7 +5,7 @@ import '../models/usuarios/secretario.dart';
 import '../models/usuarios/paciente.dart';
 import '../models/usuarios/enfermero.dart';
 import '../models/usuarios/medico.dart';
-import '../routes/app_routes.dart';
+import '../services/mock_auth_repository.dart';
 
 // Importación de las 4 pantallas 
 import 'admin_dashboard.dart';
@@ -16,9 +16,12 @@ import 'enfermero_dashboard.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
-  void _cerrarSesion(BuildContext context) {
-    MockDatabase().usuarioActivo = null;
-    Navigator.pushReplacementNamed(context, AppRoutes.welcome);
+void _cerrarSesion(BuildContext context) async {
+    // 1. Usamos tu nuevo repositorio para limpiar la sesión
+    await MockAuthRepository().logout();
+    if (context.mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); 
+    }
   }
 
   @override
@@ -44,30 +47,27 @@ class DashboardScreen extends StatelessWidget {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1000),
-              child: _enrutarPorRol(db.usuarioActivo),
+              child: _enrutarPorRol(db.usuarioActivo, context),
             ),
           ),
         ),
       ),
-      
-      // BOTÓN DE CERRAR SESIÓN UNIVERSAL
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _cerrarSesion(context),
-        backgroundColor: Theme.of(context).colorScheme.errorContainer,
-        foregroundColor: Theme.of(context).colorScheme.error,
-        elevation: 4,
-        icon: const Icon(Icons.logout_rounded),
-        label: const Text("Cerrar Sesión", style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  Widget _enrutarPorRol(dynamic usuario) {
-    if (usuario is Administrador) return const AdminDashboard();
-    if (usuario is Paciente) return const PacienteDashboard();
-    if (usuario is Secretario) return const SecretarioDashboard();
-    if (usuario is Enfermero || usuario is Medico) return const EnfermeroDashboard();
+Widget _enrutarPorRol(dynamic usuario, BuildContext context) {
+    if (usuario is Administrador) {
+      return AdminDashboard(onLogout: () => _cerrarSesion(context));
+    }
+    if (usuario is Paciente) {
+      return PacienteDashboard(onLogout: () => _cerrarSesion(context));
+    }
+    if (usuario is Secretario) {
+      return SecretarioDashboard(onLogout: () => _cerrarSesion(context));
+    }
+    if (usuario is Enfermero || usuario is Medico) {
+      return EnfermeroDashboard(onLogout: () => _cerrarSesion(context));
+    }
     
     return const Center(child: Text("Error: Rol no parametrizado en el sistema."));
   }

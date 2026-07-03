@@ -10,9 +10,11 @@ import '../models/transacciones/director_historial.dart';
 import '../models/transacciones/historial_medico.dart';
 import '../widgets/custom_dialogs.dart';
 import '../utils/date_formatter.dart';
+import '../widgets/header_actions.dart';
 
 class PacienteDashboard extends StatefulWidget {
-  const PacienteDashboard({super.key});
+  final VoidCallback onLogout;
+  const PacienteDashboard({super.key, required this.onLogout});
 
   @override
   State<PacienteDashboard> createState() => _PacienteDashboardState();
@@ -94,6 +96,18 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Verificamos si hay un usuario activo, si no lo hay, redirigimos al login
+    if (db.usuarioActivo == null) {
+      Future.microtask(() => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false));
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      );
+    }
     Paciente miPerfil = db.usuarioActivo as Paciente;
 
     return Scaffold(
@@ -117,11 +131,15 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                 )
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 16,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       "Hola, ${miPerfil.nombres} 👋",
@@ -150,6 +168,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                     ),
                   ],
                 ),
+                HeaderActions(onLogout: widget.onLogout, usuarioActivo: db.usuarioActivo!),
               ],
             ),
           ),
@@ -189,7 +208,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                             )
                           ],
                         ),
-                        labelColor: Colors.white,
+                        labelColor: Theme.of(context).colorScheme.secondaryContainer,
                         unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
                         indicatorSize: TabBarIndicatorSize.tab,
                         dividerColor: Colors.transparent, // Quita la línea de abajo

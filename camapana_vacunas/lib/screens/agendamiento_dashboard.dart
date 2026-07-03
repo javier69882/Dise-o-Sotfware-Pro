@@ -9,7 +9,8 @@ import '../widgets/custom_dialogs.dart';
 import '../utils/date_formatter.dart';
 
 class AgendamientoDashboard extends StatefulWidget {
-  const AgendamientoDashboard({super.key});
+  final VoidCallback onLogout;
+  const AgendamientoDashboard({super.key, required this.onLogout});
 
   @override
   State<AgendamientoDashboard> createState() => _AgendamientoDashboardState();

@@ -18,4 +18,37 @@ class Paciente extends PersonaUsuaria {
     required this.grupoRiesgo,
     required this.estadoVacunacion,
   });
+
+  // Mapeo para la BD (Firestore, SQL, etc.)
+  Map<String, dynamic> toMap() {
+    return {
+      'rol': 'Paciente', // <-- CRÍTICO para el polimorfismo
+      'rut': rut,
+      'nombres': nombres,
+      'apellidos': apellidos,
+      'correo': correo,
+      'telefono': telefono,
+      'fechaNacimiento': fechaNacimiento.toIso8601String(), // Las fechas siempre van como String ISO
+      'prevision': prevision,
+      'grupoRiesgo': grupoRiesgo,
+      'estadoVacunacion': estadoVacunacion,
+    };
+  }
+
+  // 2. Reconstruir desde la BD
+  factory Paciente.fromMap(Map<String, dynamic> map) {
+    return Paciente(
+      rut: map['rut'],
+      nombres: map['nombres'],
+      apellidos: map['apellidos'],
+      correo: map['correo'],
+      telefono: map['telefono'],
+      fechaNacimiento: DateTime.parse(map['fechaNacimiento']),
+      prevision: map['prevision'],
+      grupoRiesgo: map['grupoRiesgo'],
+      estadoVacunacion: map['estadoVacunacion'],
+    );
+  }
 }
+
+

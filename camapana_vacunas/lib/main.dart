@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'routes/app_routes.dart'; 
 import 'utils/app_theme.dart';
+import 'services/mock_database.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized(); 
+  
+  // 3. Inicializa los usuarios, campañas y centros en memoria
+  MockDatabase().inicializarDatos();
   runApp(const VacunacionApp());
 }
 
@@ -26,7 +31,7 @@ class VacunacionApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme, // Tema definido en app_theme.dart
       
-      initialRoute: AppRoutes.welcome,
+      initialRoute: AppRoutes.login,
       routes: AppRoutes.getRoutes(),
     );
   }
