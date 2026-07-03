@@ -12,6 +12,7 @@ import '../models/centros/centro_no_medico_adaptado.dart';
 import '../widgets/custom_dialogs.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/header_actions.dart';
+import '../utils/app_validators.dart';
 
 import '../models/usuarios/enfermero.dart';
 import '../models/usuarios/medico.dart';
@@ -133,7 +134,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         tabs: [
                           Tab(icon: Icon(Icons.campaign_rounded), text: "Gestión de Campañas"),
                           Tab(icon: Icon(Icons.local_shipping_rounded), text: "Inventario por Sede"),
-                          Tab(icon: Icon(Icons.badge_rounded), text: "Gestión de Personal"), // <--- NUEVA PESTAÑA
+                          Tab(icon: Icon(Icons.badge_rounded), text: "Gestión de Personal"),
                         ],
                       ),
                     ),
@@ -591,7 +592,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final tipoEstablecimientoCtrl = TextEditingController();
     final ubicacionEstablecimientoCtrl = TextEditingController();
 
-    String tipoSedeSeleccionado = "Médico";
+    String tipoSedeSeleccionado = "Medico";
 
     showDialog(
       context: context,
@@ -641,7 +642,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         DropdownButtonFormField<String>(
                           value: tipoSedeSeleccionado,
                           decoration: const InputDecoration(labelText: "Tipo de Centro", prefixIcon: Icon(Icons.category_outlined)),
-                          items: ["Médico", "Adaptado"].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                          items: ["Medico", "Adaptado"].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                           onChanged: (val) => setStateDialog(() => tipoSedeSeleccionado = val!),
                         ),
                         const SizedBox(height: 16),
@@ -683,7 +684,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        if (tipoSedeSeleccionado == "Médico") ...[
+                        if (tipoSedeSeleccionado == "Medico") ...[
                           TextFormField(controller: tipoEstablecimientoCtrl, decoration: const InputDecoration(labelText: "Tipo (ej: Hospital, SAPU)", prefixIcon: Icon(Icons.local_hospital_outlined)), validator: (v) => v!.isEmpty ? "Especifique" : null),
                         ] else ...[
                           TextFormField(controller: ubicacionEstablecimientoCtrl, decoration: const InputDecoration(labelText: "Ubicación (ej: Gimnasio)", prefixIcon: Icon(Icons.sports_basketball_outlined)), validator: (v) => v!.isEmpty ? "Especifique" : null),
@@ -707,8 +708,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   if (formKey.currentState!.validate()) {
                                     String nuevoIdCentro = "CEN-${DateTime.now().millisecondsSinceEpoch}";
                                     CentroVacunacion nuevaSede;
-                                    if (tipoSedeSeleccionado == "Médico") {
-                                      nuevaSede = CentroMedico(idCentro: nuevoIdCentro, nombre: nombreCtrl.text, direccion: direccionCtrl.text, comuna: comunaCtrl.text, region: regionCtrl.text, capacidadDiaria: int.parse(capacidadCtrl.text), horarioAtencion: horarioCtrl.text, tipo: "Médico", tipoEstablecimiento: tipoEstablecimientoCtrl.text);
+                                    if (tipoSedeSeleccionado == "Medico") {
+                                      nuevaSede = CentroMedico(idCentro: nuevoIdCentro, nombre: nombreCtrl.text, direccion: direccionCtrl.text, comuna: comunaCtrl.text, region: regionCtrl.text, capacidadDiaria: int.parse(capacidadCtrl.text), horarioAtencion: horarioCtrl.text, tipo: "MMedico", tipoEstablecimiento: tipoEstablecimientoCtrl.text);
                                     } else {
                                       nuevaSede = CentroNoMedicoAdaptado(idCentro: nuevoIdCentro, nombre: nombreCtrl.text, direccion: direccionCtrl.text, comuna: comunaCtrl.text, region: regionCtrl.text, capacidadDiaria: int.parse(capacidadCtrl.text), horarioAtencion: horarioCtrl.text, tipo: "Adaptado", ubicacionEstablecimiento: ubicacionEstablecimientoCtrl.text);
                                     }
@@ -1144,6 +1145,14 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
     final especialidadCtrl = TextEditingController(text: isEditing && usuarioAEditar is Medico ? usuarioAEditar.especialidad : "");
     final unidadCtrl = TextEditingController(text: isEditing && usuarioAEditar is Enfermero ? usuarioAEditar.unidadAsignada : "");
 
+    // 1. CREAMOS EL VIGILANTE PARA EL RUT
+    final rutFocusNode = FocusNode();
+    rutFocusNode.addListener(() {
+      if (!rutFocusNode.hasFocus && rutCtrl.text.isNotEmpty) {
+        rutCtrl.text = AppValidators.formatearRut(rutCtrl.text);
+      }
+    });
+
     showDialog(
       context: context,
       builder: (context) {
@@ -1167,6 +1176,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                 child: SingleChildScrollView(
                   child: Form(
                     key: formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1192,14 +1202,17 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                         DropdownButtonFormField<String>(
                           value: rolSeleccionado,
                           decoration: const InputDecoration(labelText: "Rol del Funcionario", prefixIcon: Icon(Icons.work_outline_rounded)),
-                          items: ["Administrador", "Médico", "Enfermero", "Secretario"].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                          items: ["Administrador", "Medico", "Enfermero", "Secretario"].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                           onChanged: isEditing ? null : (val) => setStateDialog(() => rolSeleccionado = val!),
                         ),
                         const SizedBox(height: 16),
+                        
+                        // --- CAMPO RUT CON VIGILANTE Y VALIDADOR ---
                         TextFormField(
                           controller: rutCtrl,
+                          focusNode: rutFocusNode, // Asignamos el vigilante
                           decoration: const InputDecoration(labelText: "RUT", prefixIcon: Icon(Icons.pin_outlined)),
-                          validator: (v) => v!.isEmpty ? "Obligatorio" : null,
+                          validator: AppValidators.validarRut, // Validador estricto
                           enabled: !isEditing,
                         ),
                         const SizedBox(height: 16),
@@ -1209,7 +1222,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                               child: TextFormField(
                                 controller: nombresCtrl,
                                 decoration: const InputDecoration(labelText: "Nombres", prefixIcon: Icon(Icons.person_outline_rounded)),
-                                validator: (v) => v!.isEmpty ? "Obligatorio" : null,
+                                validator: (v) => AppValidators.validarVacio(v, "Nombres"),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -1217,7 +1230,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                               child: TextFormField(
                                 controller: apellidosCtrl,
                                 decoration: const InputDecoration(labelText: "Apellidos"),
-                                validator: (v) => v!.isEmpty ? "Obligatorio" : null,
+                                validator: (v) => AppValidators.validarVacio(v, "Apellidos"),
                               ),
                             ),
                           ],
@@ -1227,13 +1240,15 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                           controller: correoCtrl,
                           decoration: const InputDecoration(labelText: "Correo Electrónico", prefixIcon: Icon(Icons.email_outlined)),
                           keyboardType: TextInputType.emailAddress,
-                          validator: (v) => v!.isEmpty ? "Obligatorio" : null,
+                          validator: AppValidators.validarCorreo, // Validador de correo
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: telefonoCtrl,
                           decoration: const InputDecoration(labelText: "Teléfono", prefixIcon: Icon(Icons.phone_outlined)),
                           keyboardType: TextInputType.phone,
+                          inputFormatters: AppValidators.filtroTelefono,
+                          validator: AppValidators.validarTelefono, // Validador de teléfono
                         ),
                         
                         const Padding(padding: EdgeInsets.symmetric(vertical: 24.0), child: Divider()),
@@ -1244,7 +1259,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                         const SizedBox(height: 16),
 
                         if (rolSeleccionado == "Administrador") ...[
-                          TextFormField(controller: deptoCtrl, decoration: const InputDecoration(labelText: "Departamento", prefixIcon: Icon(Icons.domain_rounded)), validator: (v) => v!.isEmpty ? "Obligatorio" : null),
+                          TextFormField(controller: deptoCtrl, decoration: const InputDecoration(labelText: "Departamento", prefixIcon: Icon(Icons.domain_rounded)), validator: (v) => AppValidators.validarVacio(v, "Departamento")),
                         ] else if (rolSeleccionado == "Secretario") ...[
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -1257,13 +1272,13 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                               ],
                             ),
                           ),
-                        ] else if (rolSeleccionado == "Médico" || rolSeleccionado == "Enfermero") ...[
-                          TextFormField(controller: registroCtrl, decoration: const InputDecoration(labelText: "Registro RNPI", prefixIcon: Icon(Icons.verified_user_outlined)), validator: (v) => v!.isEmpty ? "Obligatorio" : null),
+                        ] else if (rolSeleccionado == "Medico" || rolSeleccionado == "Enfermero") ...[
+                          TextFormField(controller: registroCtrl, decoration: const InputDecoration(labelText: "Registro RNPI", prefixIcon: Icon(Icons.verified_user_outlined)), validator: (v) => AppValidators.validarVacio(v, "Registro RNPI")),
                           const SizedBox(height: 16),
-                          if (rolSeleccionado == "Médico")
-                            TextFormField(controller: especialidadCtrl, decoration: const InputDecoration(labelText: "Especialidad", prefixIcon: Icon(Icons.medical_services_outlined)), validator: (v) => v!.isEmpty ? "Obligatorio" : null)
+                          if (rolSeleccionado == "Medico")
+                            TextFormField(controller: especialidadCtrl, decoration: const InputDecoration(labelText: "Especialidad", prefixIcon: Icon(Icons.medical_services_outlined)), validator: (v) => AppValidators.validarVacio(v, "Especialidad"))
                           else
-                            TextFormField(controller: unidadCtrl, decoration: const InputDecoration(labelText: "Unidad Asignada", prefixIcon: Icon(Icons.local_hospital_outlined)), validator: (v) => v!.isEmpty ? "Obligatorio" : null),
+                            TextFormField(controller: unidadCtrl, decoration: const InputDecoration(labelText: "Unidad Asignada", prefixIcon: Icon(Icons.local_hospital_outlined)), validator: (v) => AppValidators.validarVacio(v, "Unidad Asignada")),
                         ],
                         const SizedBox(height: 32),
 
@@ -1282,6 +1297,10 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
                                 onPressed: () {
                                   if (formKey.currentState!.validate()) {
+                                    
+                                    // Última red de seguridad de formateo antes de guardar
+                                    rutCtrl.text = AppValidators.formatearRut(rutCtrl.text);
+
                                     if (isEditing) db.usuarios.removeWhere((u) => u.rut == usuarioAEditar.rut);
 
                                     var usuarioActualizado;
@@ -1289,7 +1308,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                                       usuarioActualizado = Administrador(rut: rutCtrl.text, nombres: nombresCtrl.text, apellidos: apellidosCtrl.text, correo: correoCtrl.text, telefono: telefonoCtrl.text, fechaNacimiento: DateTime(1990), departamento: deptoCtrl.text);
                                     } else if (rolSeleccionado == "Secretario") {
                                       usuarioActualizado = Secretario(rut: rutCtrl.text, nombres: nombresCtrl.text, apellidos: apellidosCtrl.text, correo: correoCtrl.text, telefono: telefonoCtrl.text, fechaNacimiento: DateTime(1990), idSecretario: isEditing ? (usuarioAEditar as Secretario).idSecretario : "SEC-${DateTime.now().millisecondsSinceEpoch}");
-                                    } else if (rolSeleccionado == "Médico") {
+                                    } else if (rolSeleccionado == "Medico") {
                                       usuarioActualizado = Medico(rut: rutCtrl.text, nombres: nombresCtrl.text, apellidos: apellidosCtrl.text, correo: correoCtrl.text, telefono: telefonoCtrl.text, fechaNacimiento: DateTime(1990), registro: registroCtrl.text, especialidad: especialidadCtrl.text);
                                     } else if (rolSeleccionado == "Enfermero") {
                                       usuarioActualizado = Enfermero(rut: rutCtrl.text, nombres: nombresCtrl.text, apellidos: apellidosCtrl.text, correo: correoCtrl.text, telefono: telefonoCtrl.text, fechaNacimiento: DateTime(1990), registro: registroCtrl.text, unidadAsignada: unidadCtrl.text);
@@ -1314,9 +1333,10 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
           }
         );
       }
-    );
+    ).then((_) {
+      rutFocusNode.dispose();
+    });
   }
-
   void _mostrarFormularioTramo(Campana campana) {
     final formKey = GlobalKey<FormState>();
     final nombreCtrl = TextEditingController();
