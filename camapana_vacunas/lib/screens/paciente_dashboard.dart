@@ -23,6 +23,9 @@ class PacienteDashboard extends StatefulWidget {
 class _PacienteDashboardState extends State<PacienteDashboard> {
   final db = MockDatabase();
 
+  // Variable para el consentimiento
+  bool _autorizaHistorial = false;
+
   // Variables Agendamiento
   Campana? _campanaSeleccionada;
   TramoCampana? _tramoSeleccionado;
@@ -304,9 +307,21 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
         ),
     ];
 
+    // CHECKBOX DE CONSENTIMIENTO Y BOTÓN ACTUALIZADO
+    Widget checkboxConsentimiento = CheckboxListTile(
+      title: Text("Autorizo explícitamente el uso de mi historial médico por parte del personal de salud antes de la inoculación.", 
+        style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)
+      ),
+      value: _autorizaHistorial,
+      activeColor: Theme.of(context).colorScheme.primary,
+      contentPadding: EdgeInsets.zero,
+      controlAffinity: ListTileControlAffinity.leading,
+      onChanged: (val) => setState(() => _autorizaHistorial = val ?? false),
+    );
+
     Widget botonGenerar = ElevatedButton.icon(
       style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56)),
-      onPressed: () => _generarHistorialMedico(perfil),
+      onPressed: _autorizaHistorial ? () => _generarHistorialMedico(perfil) : null,
       icon: const Icon(Icons.download_rounded),
       label: const Text("Generar Documento"),
     );
@@ -325,12 +340,20 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
             children: [
               Expanded(child: ListView(physics: const BouncingScrollPhysics(), children: formContent)),
               const SizedBox(height: 16),
+              checkboxConsentimiento, // <-- Agregado aquí
+              const SizedBox(height: 16),
               botonGenerar,
             ],
           )
         : Column( // En celular dejamos que el formulario ocupe su altura natural
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [...formContent, const SizedBox(height: 32), botonGenerar],
+            children: [
+              ...formContent, 
+              const SizedBox(height: 32), 
+              checkboxConsentimiento, // <-- Agregado aquí
+              const SizedBox(height: 16),
+              botonGenerar
+            ],
           ),
     );
 
@@ -422,7 +445,10 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
 
     List<CitaVacunacion> misCitas = [];
     for (var c in db.centros) {
-      misCitas.addAll(c.citasAgendadas.where((cita) => cita.rutPaciente == miPerfil.rut));
+      misCitas.addAll(c.citasAgendadas.where((cita) => 
+        cita.rutPaciente == miPerfil.rut && 
+        cita.estado != "Cancelada" // Filtro que oculta las citas canceladas, aún así se almacenan en la base de datos para mantener el historial
+      ));
     }
 
     List<TimeOfDay> horasDisponibles = _centroSeleccionado != null ? _generarBloquesHorarios(_centroSeleccionado!.horarioAtencion) : [];
@@ -579,85 +605,114 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
                         )
                       ],
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    child: Column(
                       children: [
-                        // 1. Contenedor del Icono
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: primarySoft, 
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.vaccines_rounded,
-                              color: primaryColor,
-                              size: 30,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        
-                        // 2. Información Principal
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DateFormatter.formatDateTime(c.fechaHora), 
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.3,
-                                  color: Theme.of(context).colorScheme.onBackground, // Centralizado
-                                )
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // 1. Contenedor del Icono
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: primarySoft, 
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              const SizedBox(height: 6),
-                              Row(
+                              child: Center(
+                                child: Icon(
+                                  Icons.vaccines_rounded,
+                                  color: primaryColor,
+                                  size: 30,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            
+                            // 2. Información Principal
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.location_on_rounded, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      centroN, 
-                                      style: TextStyle(
-                                        fontSize: 14, 
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant, // Centralizado
-                                        fontWeight: FontWeight.w500,
+                                  Text(
+                                    DateFormatter.formatDateTime(c.fechaHora), 
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.3,
+                                      color: Theme.of(context).colorScheme.onBackground, // Centralizado
+                                    )
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.location_on_rounded, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          centroN, 
+                                          style: TextStyle(
+                                            fontSize: 14, 
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant, // Centralizado
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
-                        
-                        // 3. Pill de Estado (Colores semánticos)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: c.estado == 'Agendada' 
-                                ? Theme.of(context).colorScheme.primaryContainer // Centralizado
-                                : Theme.of(context).colorScheme.secondaryContainer, // Centralizado
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            c.estado, 
-                            style: TextStyle(
-                              color: c.estado == 'Agendada' 
-                                  ? Theme.of(context).colorScheme.primary // Centralizado
-                                  : Theme.of(context).colorScheme.onSecondaryContainer, // Centralizado
-                              fontWeight: FontWeight.bold, 
-                              fontSize: 12,
-                              letterSpacing: 0.2,
                             ),
-                          ),
+                            
+                            // 3. Pill de Estado (Colores semánticos)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: c.estado == 'Programada' 
+                                    ? Theme.of(context).colorScheme.primaryContainer // Centralizado
+                                    : Theme.of(context).colorScheme.secondaryContainer, // Centralizado
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Text(
+                                c.estado, 
+                                style: TextStyle(
+                                  color: c.estado == 'Programada' 
+                                      ? Theme.of(context).colorScheme.primary // Centralizado
+                                      : Theme.of(context).colorScheme.onSecondaryContainer, // Centralizado
+                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 12,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+
+                        // --- NUEVA SECCIÓN DE ACCIONES ---
+                        if (c.estado == 'Programada' || c.estado == 'Completada') ...[
+                          const SizedBox(height: 16),
+                          Divider(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5), height: 1),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (c.estado == 'Programada')
+                                TextButton.icon(
+                                  onPressed: () => _cancelarCita(c),
+                                  icon: Icon(Icons.cancel_outlined, color: Theme.of(context).colorScheme.error, size: 18),
+                                  label: Text("Cancelar Cita", style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                                ),
+                              if (c.estado == 'Completada')
+                                TextButton.icon(
+                                  onPressed: () => _mostrarDialogoSintomas(c),
+                                  icon: Icon(Icons.medical_services_outlined, color: Theme.of(context).colorScheme.primary, size: 18),
+                                  label: const Text("Reportar Síntomas"),
+                                ),
+                            ],
+                          )
+                        ]
+                        // --- FIN NUEVA SECCIÓN ---
                       ],
                     ),
                   );
@@ -674,5 +729,90 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
       CustomDialogs.showMessage(context, "Éxito", "Cita tomada de forma exitosa.");
       setState(() { _fechaSeleccionada = null; _horaSeleccionada = null; });
     }
+  }
+
+  // FUNCIÓN PARA CANCELAR CITAS
+  void _cancelarCita(CitaVacunacion cita) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Cancelar Cita"),
+        content: const Text("¿Estás seguro de que deseas cancelar tu hora? Perderás tu cupo en esta sede."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Volver")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error, 
+              foregroundColor: Theme.of(context).colorScheme.onError
+            ),
+            onPressed: () {
+              setState(() {
+                cita.estado = "Cancelada"; // Actualizamos estado localmente
+              });
+              Navigator.pop(ctx);
+              CustomDialogs.showSnackBar(context, "Cita cancelada exitosamente.");
+            }, 
+            child: const Text("Sí, cancelar")
+          ),
+        ],
+      )
+    );
+  }
+
+  // FUNCIÓN PARA REPORTAR SÍNTOMAS POST-VACUNA
+  void _mostrarDialogoSintomas(CitaVacunacion cita) {
+    final formKey = GlobalKey<FormState>();
+    final sintomasCtrl = TextEditingController();
+    String gravedad = "Leve";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.healing_rounded, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text("Reportar Síntomas"),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Registra cualquier reacción adversa dentro de los 3 días posteriores a tu inoculación.", style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: sintomasCtrl,
+                decoration: const InputDecoration(labelText: "Síntomas (Ej. Fiebre, dolor de brazo)", prefixIcon: Icon(Icons.edit_note_rounded)),
+                validator: (v) => v!.isEmpty ? "Ingresa al menos un síntoma" : null,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: gravedad,
+                decoration: const InputDecoration(labelText: "Nivel de Gravedad", prefixIcon: Icon(Icons.warning_amber_rounded)),
+                items: ["Leve", "Moderado", "Grave"].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                onChanged: (val) => gravedad = val!,
+              )
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                // Aquí en el futuro se creará la instancia de SeguimientoSintomas
+                Navigator.pop(ctx);
+                CustomDialogs.showSnackBar(context, "Reporte enviado correctamente al personal de salud.");
+              }
+            }, 
+            child: const Text("Enviar Reporte")
+          ),
+        ],
+      )
+    );
   }
 }
