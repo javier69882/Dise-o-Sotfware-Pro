@@ -17,6 +17,7 @@ import '../utils/app_validators.dart';
 import '../models/usuarios/enfermero.dart';
 import '../models/usuarios/medico.dart';
 import '../models/usuarios/secretario.dart';
+import '../models/usuarios/paciente.dart';
 
 class AdminDashboard extends StatefulWidget {
   final VoidCallback onLogout;
@@ -31,7 +32,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // Verificamos si hay un usuario activo, si no lo hay, redirigimos al login
     if (db.usuarioActivo == null) {
       Future.microtask(() => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false));
       return Scaffold(
@@ -69,12 +69,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 16, // Separación horizontal cuando hay espacio
-              runSpacing: 16, // Separación vertical cuando se caen a la línea de abajo
+              spacing: 16,
+              runSpacing: 16,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min, // Añade esto para que la columna no ocupe espacio infinito
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       "Hola, ${admin.nombres} 👋",
@@ -108,7 +108,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
 
-          // CUERPO PRINCIPAL (Pestañas y Contenido)
+          // CUERPO PRINCIPAL
           Expanded(
             child: DefaultTabController(
               length: 3,
@@ -117,7 +117,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // PESTAÑAS
                     Container(
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
@@ -140,14 +139,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     const SizedBox(height: 24),
                     
-                    // CONTENIDO DE LAS PESTAÑAS
                     Expanded(
                       child: TabBarView(
                         physics: const BouncingScrollPhysics(),
                         children: [
                           _buildTabCampanas(admin),
                           _buildTabInventarioSedes(),
-                          _buildTabPersonal(), // <--- NUEVA VISTA
+                          _buildTabPersonal(), 
                         ],
                       ),
                     ),
@@ -166,20 +164,38 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 12,
           children: [
             Text("Campañas Activas", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
-            ElevatedButton.icon(
-              onPressed: () => _mostrarFormularioCampana(admin),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text("Nueva Campaña"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.tertiary,
-                foregroundColor: Theme.of(context).colorScheme.onTertiary,
-                elevation: 0,
-                minimumSize: const Size(0, 48), 
-              ),
+            Wrap(
+              spacing: 12, // Un poco más de aire entre los botones
+              runSpacing: 12,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _mostrarVerificadorPaciente(), 
+                  icon: const Icon(Icons.how_to_reg_rounded),
+                  label: const Text("Verificar Paciente"),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 48),
+                    side: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _mostrarFormularioCampana(admin),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text("Nueva Campaña"),
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    minimumSize: const Size(0, 48),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+              ],
             )
           ],
         ),
@@ -217,6 +233,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     title: Text(campana.nombre, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
                     subtitle: Text("Avance: ${campana.calcularAvanceGlobal().toStringAsFixed(1)}% | Tipo: $tipoStr", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit_rounded),
+                      color: Theme.of(context).colorScheme.primary,
+                      tooltip: "Editar Campaña",
+                      onPressed: () => _mostrarFormularioCampana(admin, campanaAEditar: campana),
+                    ),
                     children: [
                       const Divider(),
                       Padding(
@@ -271,7 +293,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Cambia el Row principal por este Wrap
         Wrap(
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -279,11 +300,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           runSpacing: 12,
           children: [
             Text("Sedes de Vacunación", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
-            
-            // Cambia el Row de los botones por este Wrap interno
             Wrap(
-              spacing: 8, // Espacio horizontal entre botones
-              runSpacing: 8, // Espacio vertical si un botón cae abajo
+              spacing: 8, 
+              runSpacing: 8, 
               children: [
                 ElevatedButton.icon(
                   onPressed: _mostrarFormularioCrearSede,
@@ -409,7 +428,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Text("Personal del Sistema", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onBackground)),
             ElevatedButton.icon(
-              onPressed: () => _mostrarFormularioFuncionario(null), // null significa modo "Crear"
+              onPressed: () => _mostrarFormularioFuncionario(null), 
               icon: const Icon(Icons.person_add_alt_1_rounded),
               label: const Text("Registrar Funcionario"),
               style: ElevatedButton.styleFrom(
@@ -439,7 +458,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 pillTextColor = Colors.orange.shade900;
               }
 
-              // Extraemos información específica para mostrarla al expandir
               String infoEspecifica = "";
               if (funcionario is Administrador) {
                 infoEspecifica = "Departamento: ${funcionario.departamento}";
@@ -519,7 +537,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                // Evita que el administrador activo se elimine a sí mismo
                                 if (funcionario.rut != db.usuarioActivo!.rut)
                                   TextButton.icon(
                                     onPressed: () => _confirmarEliminacion(funcionario),
@@ -528,7 +545,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   ),
                                 const SizedBox(width: 8),
                                 ElevatedButton.icon(
-                                  onPressed: () => _mostrarFormularioFuncionario(funcionario), // Pasamos el usuario para editar
+                                  onPressed: () => _mostrarFormularioFuncionario(funcionario), 
                                   icon: const Icon(Icons.edit_rounded, size: 18),
                                   label: const Text("Editar Datos"),
                                   style: ElevatedButton.styleFrom(
@@ -580,6 +597,300 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   // LÓGICA DE DIÁLOGOS Y FORMULARIOS
+  
+  void _mostrarVerificadorPaciente() {
+    final formKey = GlobalKey<FormState>();
+    final rutCtrl = TextEditingController();
+    Campana? campanaSeleccionada = db.campanas.isNotEmpty ? db.campanas.first : null;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.how_to_reg_rounded, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text("Verificar Elegibilidad"),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Valida si un paciente cumple con los requisitos del tramo actual.", style: TextStyle(fontSize: 13)),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: rutCtrl,
+                  decoration: const InputDecoration(labelText: "RUT del Paciente", prefixIcon: Icon(Icons.badge_outlined)),
+                  validator: AppValidators.validarRut,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<Campana>(
+                  value: campanaSeleccionada,
+                  decoration: const InputDecoration(labelText: "Campaña a Consultar"),
+                  items: db.campanas.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
+                  onChanged: (val) => campanaSeleccionada = val,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cerrar")),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate() && campanaSeleccionada != null) {
+                  String rutIngresado = AppValidators.formatearRut(rutCtrl.text);
+                  var pacientes = db.usuarios.whereType<Paciente>().where((p) => p.rut == rutIngresado).toList();
+                  
+                  if (pacientes.isEmpty) {
+                    CustomDialogs.showMessage(context, "Error", "El RUT ingresado no corresponde a ningún paciente registrado.");
+                    return;
+                  }
+                  
+                  var paciente = pacientes.first;
+                  bool esElegible = false;
+                  
+                  for (var tramo in campanaSeleccionada!.tramos) {
+                    if (tramo.validarPrioridadPaciente(paciente)) {
+                      esElegible = true;
+                      break;
+                    }
+                  }
+
+                  Navigator.pop(context); 
+                  
+                  if (esElegible) {
+                    CustomDialogs.showMessage(
+                      context, 
+                      "✅ Paciente Elegible", 
+                      "El paciente ${paciente.nombres} ${paciente.apellidos} SÍ cumple con los requisitos de prioridad para ser inoculado en esta campaña."
+                    );
+                  } else {
+                    CustomDialogs.showMessage(
+                      context, 
+                      "❌ No Elegible", 
+                      "El paciente ${paciente.nombres} ${paciente.apellidos} NO pertenece a la población objetivo de los tramos activos en esta campaña."
+                    );
+                  }
+                }
+              },
+              child: const Text("Verificar RUT"),
+            )
+          ],
+        );
+      }
+    );
+  }
+
+  void _mostrarFormularioCampana(Administrador admin, {Campana? campanaAEditar}) {
+    bool isEditing = campanaAEditar != null;
+    final formKey = GlobalKey<FormState>();
+    
+    final nombreCtrl = TextEditingController(text: isEditing ? campanaAEditar.nombre : "");
+    final descCtrl = TextEditingController(text: isEditing ? campanaAEditar.descripcion : ""); 
+    
+    String tipoSeleccionado = (isEditing && campanaAEditar.empresaAsociada != null) ? "Empresa" : "Pública";
+    Empresa? empresaSeleccionada = (isEditing && campanaAEditar.empresaAsociada != null) 
+        ? campanaAEditar.empresaAsociada 
+        : (db.empresas.isNotEmpty ? db.empresas.first : null);
+    
+    DateTime fechaInicio = isEditing ? campanaAEditar.fechaInicio : DateTime.now();
+    DateTime fechaTermino = isEditing ? campanaAEditar.fechaTermino : DateTime.now().add(const Duration(days: 30));
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              elevation: 0,
+              backgroundColor: Colors.transparent, 
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 450),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withOpacity(0.15),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(isEditing ? Icons.edit_rounded : Icons.campaign_rounded, size: 36, color: colorScheme.primary),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          isEditing ? "Editar Campaña" : "Nueva Campaña",
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: colorScheme.primary,
+                            letterSpacing: -0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isEditing ? "Modifica los parámetros de la campaña" : "Define los parámetros y duración",
+                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+
+                        TextFormField(
+                          controller: nombreCtrl,
+                          decoration: const InputDecoration(labelText: "Nombre de la Campaña", prefixIcon: Icon(Icons.drive_file_rename_outline_rounded)),
+                          validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: descCtrl,
+                          decoration: const InputDecoration(labelText: "Población Objetivo / Detalles", prefixIcon: Icon(Icons.people_alt_outlined)),
+                          validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: tipoSeleccionado,
+                          decoration: const InputDecoration(labelText: "Tipo de Campaña", prefixIcon: Icon(Icons.public_rounded)),
+                          items: ["Pública", "Empresa"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                          onChanged: (val) => setStateDialog(() => tipoSeleccionado = val!),
+                        ),
+                        const SizedBox(height: 24),
+
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Duración Prevista", style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  var picked = await showDatePicker(
+                                    context: context, initialDate: fechaInicio, firstDate: DateTime(2020), lastDate: DateTime(2030)
+                                  );
+                                  if (picked != null) setStateDialog(() => fechaInicio = picked);
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                  decoration: BoxDecoration(border: Border.all(color: colorScheme.outlineVariant), borderRadius: BorderRadius.circular(12)),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Inicio", style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
+                                      const SizedBox(height: 4),
+                                      Text(DateFormatter.formatDateOnly(fechaInicio), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  var picked = await showDatePicker(
+                                    context: context, initialDate: fechaTermino, firstDate: fechaInicio, lastDate: DateTime(2030)
+                                  );
+                                  if (picked != null) setStateDialog(() => fechaTermino = picked);
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                  decoration: BoxDecoration(border: Border.all(color: colorScheme.outlineVariant), borderRadius: BorderRadius.circular(12)),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Término", style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
+                                      const SizedBox(height: 4),
+                                      Text(DateFormatter.formatDateOnly(fechaTermino), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), side: BorderSide(color: colorScheme.outlineVariant)),
+                                child: Text("Cancelar", style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                                onPressed: () {
+                                  if (formKey.currentState!.validate()) {
+                                    setState(() {
+                                      if (isEditing) {
+                                        campanaAEditar.nombre = nombreCtrl.text;
+                                        campanaAEditar.descripcion = descCtrl.text;
+                                        campanaAEditar.fechaInicio = fechaInicio;
+                                        campanaAEditar.fechaTermino = fechaTermino;
+                                        campanaAEditar.empresaAsociada = tipoSeleccionado == "Empresa" ? empresaSeleccionada : null;
+                                      } else {
+                                        String nuevaIdCampana = "CAMP-${DateTime.now().millisecondsSinceEpoch}";
+                                        var nuevaCampana = Campana(
+                                          idCampana: nuevaIdCampana, rutAdmin: admin.rut, vacuna: db.vacunas.first, 
+                                          nombre: nombreCtrl.text, descripcion: descCtrl.text, 
+                                          fechaInicio: fechaInicio, fechaTermino: fechaTermino, 
+                                          empresaAsociada: tipoSeleccionado == "Empresa" ? empresaSeleccionada : null,
+                                        );
+                                        db.campanas.add(nuevaCampana);
+                                      }
+                                    });
+                                    Navigator.pop(context);
+                                    CustomDialogs.showSnackBar(context, isEditing ? "Campaña actualizada" : "Campaña creada exitosamente.");
+                                  }
+                                },
+                                child: const Text("Guardar"),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+
   void _mostrarFormularioCrearSede() {
     final formKey = GlobalKey<FormState>();
     final nombreCtrl = TextEditingController();
@@ -894,237 +1205,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-void _mostrarFormularioCampana(Administrador admin) {
-    final formKey = GlobalKey<FormState>();
-    final nombreCtrl = TextEditingController();
-    final descCtrl = TextEditingController(); // Añadimos controlador para descripción/población
-    
-    String tipoSeleccionado = "Pública";
-    Empresa? empresaSeleccionada = db.empresas.isNotEmpty ? db.empresas.first : null;
-    
-    // Variables para manejar las fechas en el estado del diálogo
-    DateTime fechaInicio = DateTime.now();
-    DateTime fechaTermino = DateTime.now().add(const Duration(days: 30));
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        final colorScheme = Theme.of(context).colorScheme;
-        
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              elevation: 0,
-              backgroundColor: Colors.transparent, 
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 450),
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colorScheme.primary.withOpacity(0.15),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // 1. Icono de Encabezado
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer.withOpacity(0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.campaign_rounded, size: 36, color: colorScheme.primary),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // 2. Título
-                        Text(
-                          "Nueva Campaña",
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: colorScheme.primary,
-                            letterSpacing: -0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Define los parámetros y duración",
-                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 32),
-
-                        // 3. Campos de Texto Básicos
-                        TextFormField(
-                          controller: nombreCtrl,
-                          decoration: const InputDecoration(
-                            labelText: "Nombre de la Campaña",
-                            prefixIcon: Icon(Icons.drive_file_rename_outline_rounded),
-                          ),
-                          validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: descCtrl,
-                          decoration: const InputDecoration(
-                            labelText: "Población Objetivo / Detalles",
-                            prefixIcon: Icon(Icons.people_alt_outlined),
-                          ),
-                          validator: (v) => v!.isEmpty ? "Campo obligatorio" : null,
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: tipoSeleccionado,
-                          decoration: const InputDecoration(
-                            labelText: "Tipo de Campaña",
-                            prefixIcon: Icon(Icons.public_rounded),
-                          ),
-                          items: ["Pública", "Empresa"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                          onChanged: (val) => setStateDialog(() => tipoSeleccionado = val!),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // 4. Selectores de Fecha (Duración)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text("Duración Prevista", style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () async {
-                                  var picked = await showDatePicker(
-                                    context: context, 
-                                    initialDate: fechaInicio, 
-                                    firstDate: DateTime(2020), 
-                                    lastDate: DateTime(2030)
-                                  );
-                                  if (picked != null) setStateDialog(() => fechaInicio = picked);
-                                },
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: colorScheme.outlineVariant), 
-                                    borderRadius: BorderRadius.circular(12)
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text("Inicio", style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                      const SizedBox(height: 4),
-                                      Text(DateFormatter.formatDateOnly(fechaInicio), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () async {
-                                  var picked = await showDatePicker(
-                                    context: context, 
-                                    initialDate: fechaTermino, 
-                                    firstDate: fechaInicio, // La fecha de término no puede ser antes del inicio
-                                    lastDate: DateTime(2030)
-                                  );
-                                  if (picked != null) setStateDialog(() => fechaTermino = picked);
-                                },
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: colorScheme.outlineVariant), 
-                                    borderRadius: BorderRadius.circular(12)
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text("Término", style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                      const SizedBox(height: 4),
-                                      Text(DateFormatter.formatDateOnly(fechaTermino), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-
-                        // 5. Botones de Acción
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  side: BorderSide(color: colorScheme.outlineVariant),
-                                ),
-                                child: Text("Cancelar", style: TextStyle(color: colorScheme.onSurfaceVariant)),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  elevation: 0,
-                                ),
-                                onPressed: () {
-                                  if (formKey.currentState!.validate()) {
-                                    String nuevaIdCampana = "CAMP-${DateTime.now().millisecondsSinceEpoch}";
-                                    var nuevaCampana = Campana(
-                                      idCampana: nuevaIdCampana, 
-                                      rutAdmin: admin.rut,
-                                      vacuna: db.vacunas.first, 
-                                      nombre: nombreCtrl.text, 
-                                      descripcion: descCtrl.text, // Usamos la descripción del campo
-                                      fechaInicio: fechaInicio, // Usamos la fecha seleccionada
-                                      fechaTermino: fechaTermino, // Usamos la fecha seleccionada
-                                      empresaAsociada: tipoSeleccionado == "Empresa" ? empresaSeleccionada : null,
-                                    );
-                                    setState(() { db.campanas.add(nuevaCampana); });
-                                    Navigator.pop(context);
-                                    CustomDialogs.showMessage(context, "Éxito", "La campaña ha sido creada.");
-                                  }
-                                },
-                                child: const Text("Guardar"),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }
-        );
-      }
-    );
-  }
-
-void _mostrarFormularioFuncionario(var usuarioAEditar) {
+  void _mostrarFormularioFuncionario(var usuarioAEditar) {
     bool isEditing = usuarioAEditar != null;
     final formKey = GlobalKey<FormState>();
     
@@ -1145,7 +1226,6 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
     final especialidadCtrl = TextEditingController(text: isEditing && usuarioAEditar is Medico ? usuarioAEditar.especialidad : "");
     final unidadCtrl = TextEditingController(text: isEditing && usuarioAEditar is Enfermero ? usuarioAEditar.unidadAsignada : "");
 
-    // 1. CREAMOS EL VIGILANTE PARA EL RUT
     final rutFocusNode = FocusNode();
     rutFocusNode.addListener(() {
       if (!rutFocusNode.hasFocus && rutCtrl.text.isNotEmpty) {
@@ -1207,12 +1287,11 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                         ),
                         const SizedBox(height: 16),
                         
-                        // --- CAMPO RUT CON VIGILANTE Y VALIDADOR ---
                         TextFormField(
                           controller: rutCtrl,
-                          focusNode: rutFocusNode, // Asignamos el vigilante
+                          focusNode: rutFocusNode,
                           decoration: const InputDecoration(labelText: "RUT", prefixIcon: Icon(Icons.pin_outlined)),
-                          validator: AppValidators.validarRut, // Validador estricto
+                          validator: AppValidators.validarRut, 
                           enabled: !isEditing,
                         ),
                         const SizedBox(height: 16),
@@ -1240,7 +1319,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                           controller: correoCtrl,
                           decoration: const InputDecoration(labelText: "Correo Electrónico", prefixIcon: Icon(Icons.email_outlined)),
                           keyboardType: TextInputType.emailAddress,
-                          validator: AppValidators.validarCorreo, // Validador de correo
+                          validator: AppValidators.validarCorreo, 
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -1248,7 +1327,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                           decoration: const InputDecoration(labelText: "Teléfono", prefixIcon: Icon(Icons.phone_outlined)),
                           keyboardType: TextInputType.phone,
                           inputFormatters: AppValidators.filtroTelefono,
-                          validator: AppValidators.validarTelefono, // Validador de teléfono
+                          validator: AppValidators.validarTelefono, 
                         ),
                         
                         const Padding(padding: EdgeInsets.symmetric(vertical: 24.0), child: Divider()),
@@ -1298,7 +1377,6 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
                                 onPressed: () {
                                   if (formKey.currentState!.validate()) {
                                     
-                                    // Última red de seguridad de formateo antes de guardar
                                     rutCtrl.text = AppValidators.formatearRut(rutCtrl.text);
 
                                     if (isEditing) db.usuarios.removeWhere((u) => u.rut == usuarioAEditar.rut);
@@ -1337,6 +1415,7 @@ void _mostrarFormularioFuncionario(var usuarioAEditar) {
       rutFocusNode.dispose();
     });
   }
+
   void _mostrarFormularioTramo(Campana campana) {
     final formKey = GlobalKey<FormState>();
     final nombreCtrl = TextEditingController();
