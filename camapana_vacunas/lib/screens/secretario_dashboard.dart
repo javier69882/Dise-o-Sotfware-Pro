@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Añadido para el TextInputFormatter
 import '../services/mock_database.dart';
 import '../models/usuarios/paciente.dart';
 import '../models/transacciones/cita_vacunacion.dart';
@@ -8,6 +9,7 @@ import '../models/centros/centro_vacunacion.dart';
 import '../widgets/custom_dialogs.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/header_actions.dart';
+import '../utils/app_validators.dart'; // Aseguramos tener los validadores
 
 class SecretarioDashboard extends StatefulWidget {
   final VoidCallback onLogout;
@@ -23,8 +25,8 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
   // Controladores y Estados de la Búsqueda
   final _searchCtrl = TextEditingController();
   Paciente? _pacienteEncontrado;
-  bool _isSearching = false; // Controla el círculo de carga
-  String? _errorMessage;     // Controla el mensaje de error en línea
+  bool _isSearching = false; 
+  String? _errorMessage;     
 
   // Lógica de bloques horarios
   List<TimeOfDay> _generarBloquesHorarios(String horarioAtencion) {
@@ -58,38 +60,32 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
     }
   }
 
-  // --- NUEVA LÓGICA DE BÚSQUEDA ---
   Future<void> _buscarPaciente() async {
     String query = _searchCtrl.text.trim().toLowerCase();
     if (query.isEmpty) return;
 
-    // Oculta el teclado en móviles
     FocusScope.of(context).unfocus();
 
-    // 1. Iniciamos el estado de carga
     setState(() {
       _isSearching = true;
       _errorMessage = null;
       _pacienteEncontrado = null;
     });
 
-    // Simulamos un pequeño retraso de red para que se aprecie la animación de carga
     await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
 
-    // 2. Búsqueda Flexible (Por RUT o porciones de Nombre/Apellido)
     var pacientes = db.usuarios.whereType<Paciente>().where((p) {
       bool coincideRut = p.rut.toLowerCase().contains(query);
       bool coincideNombre = p.nombres.toLowerCase().contains(query) || p.apellidos.toLowerCase().contains(query);
       return coincideRut || coincideNombre;
     }).toList();
 
-    // 3. Resolvemos el estado
     setState(() {
       _isSearching = false;
       if (pacientes.isNotEmpty) {
-        _pacienteEncontrado = pacientes.first; // Seleccionamos la mejor coincidencia
+        _pacienteEncontrado = pacientes.first; 
       } else {
         _errorMessage = "No se encontraron registros para '$query'.";
       }
@@ -187,6 +183,9 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                     child: TextField(
                       controller: _searchCtrl,
                       textInputAction: TextInputAction.search,
+                      inputFormatters: [
+                        BuscadorFormatter(),  
+                      ],
                       onSubmitted: (_) => _buscarPaciente(),
                       decoration: InputDecoration(
                         hintText: "Buscar por RUT, Nombre o Apellido...",
@@ -264,7 +263,8 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
       citasPaciente.addAll(c.citasAgendadas.where((cita) => cita.rutPaciente == paciente.rut));
     }
     
-    var pendientes = citasPaciente.where((c) => c.estado == "Programada" || c.estado == "Agendada").toList();
+    // Filtramos para mostrar "En Sala de Espera" también en pendientes
+    var pendientes = citasPaciente.where((c) => c.estado == "Programada" || c.estado == "Agendada" || c.estado == "En Sala de Espera").toList();
     var historial = citasPaciente.where((c) => c.estado == "Completada" || c.estado == "Cancelada").toList();
 
     return Column(
@@ -368,6 +368,7 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
   Widget _buildTarjetaCita(CitaVacunacion cita, ColorScheme colorScheme) {
     String centroNombre = db.centros.firstWhere((c) => c.idCentro == cita.idCentro).nombre;
     bool esPasada = cita.estado == "Completada" || cita.estado == "Cancelada";
+    bool esEnSala = cita.estado == "En Sala de Espera";
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -395,7 +396,47 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
               ],
             ),
           ),
-          Text(cita.estado, style: TextStyle(fontWeight: FontWeight.bold, color: esPasada ? colorScheme.onSurfaceVariant : colorScheme.primary)),
+          // MODIFICACIÓN DE BOTONES CHECK-IN / CANCELAR
+          if (esPasada || esEnSala)
+            Text(cita.estado, style: TextStyle(fontWeight: FontWeight.bold, color: esPasada ? colorScheme.onSurfaceVariant : colorScheme.tertiary))
+          else
+            PopupMenuButton<String>(
+              tooltip: "Opciones de Cita",
+              icon: Icon(Icons.more_vert_rounded, color: colorScheme.primary),
+              onSelected: (value) {
+                setState(() {
+                  if (value == 'checkin') {
+                    cita.estado = "En Sala de Espera";
+                    CustomDialogs.showSnackBar(context, "Paciente marcado en sala de espera.");
+                  } else if (value == 'cancelar') {
+                    cita.estado = "Cancelada";
+                    CustomDialogs.showSnackBar(context, "Cita cancelada correctamente.");
+                  }
+                });
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'checkin',
+                  child: Row(
+                    children: [
+                      Icon(Icons.how_to_reg_rounded, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Registrar Llegada'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'cancelar',
+                  child: Row(
+                    children: [
+                      Icon(Icons.cancel_rounded, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Cancelar Cita'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -552,6 +593,9 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
     final correoCtrl = TextEditingController();
     final telefonoCtrl = TextEditingController();
     String grupoRiesgo = "Público General";
+    
+    // VARIABLE PARA VALIDACIÓN INTELIGENTE
+    bool intentoGuardar = false;
 
     showDialog(
       context: context,
@@ -569,6 +613,8 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                 child: SingleChildScrollView(
                   child: Form(
                     key: formKey,
+                    // VALIDACIÓN INTELIGENTE APLICADA AQUÍ
+                    autovalidateMode: intentoGuardar ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -577,19 +623,39 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                         Text("Registrar Paciente", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: colorScheme.primary)),
                         const SizedBox(height: 32),
                         
-                        TextFormField(controller: rutCtrl, decoration: const InputDecoration(labelText: "RUT Paciente", prefixIcon: Icon(Icons.badge_rounded)), validator: (v) => v!.isEmpty ? "Obligatorio" : null),
+                        TextFormField(
+                          controller: rutCtrl, 
+                          decoration: const InputDecoration(labelText: "RUT Paciente", prefixIcon: Icon(Icons.badge_rounded)), 
+                          // FORMATTEO EN TIEMPO REAL
+                          inputFormatters: [
+                            RutFormatter(),
+                            LengthLimitingTextInputFormatter(12),
+                          ],
+                          validator: AppValidators.validarRut
+                        ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            Expanded(child: TextFormField(controller: nombresCtrl, decoration: const InputDecoration(labelText: "Nombres"), validator: (v) => v!.isEmpty ? "Obligatorio" : null)),
+                            Expanded(child: TextFormField(controller: nombresCtrl, decoration: const InputDecoration(labelText: "Nombres"), validator: (v) => AppValidators.validarVacio(v, "Nombres"))),
                             const SizedBox(width: 16),
-                            Expanded(child: TextFormField(controller: apellidosCtrl, decoration: const InputDecoration(labelText: "Apellidos"), validator: (v) => v!.isEmpty ? "Obligatorio" : null)),
+                            Expanded(child: TextFormField(controller: apellidosCtrl, decoration: const InputDecoration(labelText: "Apellidos"), validator: (v) => AppValidators.validarVacio(v, "Apellidos"))),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(controller: correoCtrl, decoration: const InputDecoration(labelText: "Correo Electrónico"), keyboardType: TextInputType.emailAddress, validator: (v) => v!.isEmpty ? "Obligatorio" : null),
+                        TextFormField(
+                          controller: correoCtrl, 
+                          decoration: const InputDecoration(labelText: "Correo Electrónico"), 
+                          keyboardType: TextInputType.emailAddress, 
+                          validator: AppValidators.validarCorreo
+                        ),
                         const SizedBox(height: 16),
-                        TextFormField(controller: telefonoCtrl, decoration: const InputDecoration(labelText: "Teléfono de contacto"), keyboardType: TextInputType.phone),
+                        TextFormField(
+                          controller: telefonoCtrl, 
+                          decoration: const InputDecoration(labelText: "Teléfono de contacto"), 
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: AppValidators.filtroTelefono,
+                          validator: AppValidators.validarTelefono,
+                        ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: grupoRiesgo,
@@ -607,7 +673,11 @@ class _SecretarioDashboardState extends State<SecretarioDashboard> {
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                                 onPressed: () {
+                                  // ACTIVAR VALIDACIÓN AL PRESIONAR EL BOTÓN
+                                  setStateDialog(() => intentoGuardar = true);
+                                  
                                   if (formKey.currentState!.validate()) {
+                                    rutCtrl.text = AppValidators.formatearRut(rutCtrl.text);
                                     var nuevoPaciente = Paciente(rut: rutCtrl.text, nombres: nombresCtrl.text, apellidos: apellidosCtrl.text, correo: correoCtrl.text, telefono: telefonoCtrl.text, fechaNacimiento: DateTime(1990), rutSecretarioCreador: db.usuarioActivo!.rut, prevision: "Fonasa", grupoRiesgo: grupoRiesgo, estadoVacunacion: "Sin vacunas");
                                     setState(() {
                                       db.usuarios.add(nuevoPaciente);

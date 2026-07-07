@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 1. AGREGADO: Para usar TextInputFormatter
 import '../utils/app_theme.dart';
 import '../utils/app_validators.dart'; 
 
@@ -22,9 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final TextEditingController _identificadorCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
-  
-  // 1. CREAMOS EL VIGILANTE (FocusNode) PARA EL CAMPO DEL RUT
-  final FocusNode _rutFocusNode = FocusNode();
 
   final _authRepository = MockAuthRepository(); 
   
@@ -34,17 +32,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // 2. LE ASIGNAMOS LA TAREA AL VIGILANTE AL INICIAR LA PANTALLA
-    _rutFocusNode.addListener(() {
-      // Si el campo acaba de perder el foco (el usuario clickeó en otro lado)
-      if (!_rutFocusNode.hasFocus) {
-        String textoActual = _identificadorCtrl.text;
-        if (textoActual.isNotEmpty) {
-          // Formateamos visualmente al instante
-          _identificadorCtrl.text = AppValidators.formatearRut(textoActual);
-        }
-      }
-    });
   }
 
   void _ejecutarLogin() async {
@@ -52,8 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return; 
     }
 
-    // Mantenemos esta línea aquí como "red de seguridad" 
-    // por si el usuario presiona "Enter" en el teclado sin salir del campo.
+
     _identificadorCtrl.text = AppValidators.formatearRut(_identificadorCtrl.text);
 
     setState(() => _isLoading = true);
@@ -91,8 +77,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    // 3. SIEMPRE DEBEMOS DESTRUIR EL FOCUSNODE PARA LIBERAR MEMORIA
-    _rutFocusNode.dispose();
     _identificadorCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -169,10 +153,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       TextFormField(
                         controller: _identificadorCtrl,
-                        // 4. CONECTAMOS EL CAMPO DE TEXTO CON EL VIGILANTE
-                        focusNode: _rutFocusNode, 
+                        inputFormatters: [
+                          RutFormatter(),
+                          LengthLimitingTextInputFormatter(12),
+                        ],
                         decoration: InputDecoration(
-                          labelText: "RUT o Correo Electrónico",
+                          labelText: "Ingrese su RUT (Ej: 12.345.678-9)",
                           prefixIcon: const Icon(Icons.person_outline_rounded),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),

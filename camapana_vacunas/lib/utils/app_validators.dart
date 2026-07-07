@@ -27,13 +27,6 @@ class AppValidators {
     if (!regex.hasMatch(value)) {
       return 'Formato de correo inválido.';
     }
-
-    // Validación adicional: Restringir dominios (nos falta definir que tipo de dominios permitir en el registro de correos)
-    /* 
-    if (!value.endsWith('@salud.cl') && !value.endsWith('@udec.cl')) {
-      return 'Debe usar un correo institucional.';
-    }
-    */
     
     return null;
   }
@@ -59,21 +52,20 @@ class AppValidators {
     return null;
   }
 
-  // 5. Auto-formateo de RUT (Para campos donde se requiera el rut con puntos y guión)
+  // 5. Auto-formateo de RUT UNIFICADO
   static String formatearRut(String rawInput) {
     String inputTrimeado = rawInput.trim();
     
-    // Si tiene arroba, asumimos que es correo y lo devolvemos tal cual
+    // Si tiene arroba, asumimos que es correo y lo devolvemos tal cual (útil para el login combinado)
     if (inputTrimeado.contains('@')) return inputTrimeado;
 
     // Limpiamos dejando solo números y la letra K
     String cleaned = inputTrimeado.replaceAll(RegExp(r'[^0-9kK]'), '').toUpperCase();
-    
-    // Si no tiene el largo mínimo, lo devolvemos como está
-    if (cleaned.length < 7) return inputTrimeado;
+    if (cleaned.isEmpty) return '';
 
-    String dv = cleaned.substring(cleaned.length - 1);
-    String body = cleaned.substring(0, cleaned.length - 1);
+    // Separamos DV y Cuerpo sin importar el largo (soporta formato en tiempo real)
+    String dv = cleaned.length > 1 ? cleaned.substring(cleaned.length - 1) : "";
+    String body = cleaned.length > 1 ? cleaned.substring(0, cleaned.length - 1) : cleaned;
     
     String formattedBody = "";
     int count = 0;
@@ -86,11 +78,45 @@ class AppValidators {
       }
     }
     
-    return "$formattedBody-$dv";
+    return dv.isNotEmpty ? "$formattedBody-$dv" : formattedBody;
   }
   
   // Restricciones de entrada para campos de teléfono (solo números y +)
   static final List<TextInputFormatter> filtroTelefono = [
     FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
   ];
+}
+
+class RutFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) return newValue;
+
+    // Llamamos a tu función estática
+    String formatted = AppValidators.formatearRut(newValue.text);
+
+    return TextEditingValue(
+      text: formatted,
+      // Mantiene el cursor siempre al final del texto mientras escribes
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class BuscadorFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) return newValue;
+
+    // Si empieza con número, es estrictamente un RUT
+    if (RegExp(r'^[0-9]').hasMatch(newValue.text)) {
+      String formatted = AppValidators.formatearRut(newValue.text);
+      return TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    }
+
+    return newValue;
+  }
 }

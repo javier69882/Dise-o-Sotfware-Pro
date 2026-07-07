@@ -49,4 +49,14 @@ class Campana {
     }
     return statsGlobal;
   }
+
+  // 1. Suma la población objetivo de todos los tramos
+  int calcularPoblacionTotal() {
+    return tramos.fold(0, (sum, t) => sum + (int.tryParse(t.poblacionObjetivo) ?? 0));
+  }
+
+  // 2. Suma el total de vacunados de todos los tramos
+  int calcularVacunadosTotales() {
+    return tramos.fold(0, (sum, t) => sum + t.contarVacunadosTramo());
+  }
 }

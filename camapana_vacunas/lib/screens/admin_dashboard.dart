@@ -13,6 +13,9 @@ import '../widgets/custom_dialogs.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/header_actions.dart';
 import '../utils/app_validators.dart';
+import '../screens/reporte_estadistico_screen.dart';
+import 'package:flutter/services.dart';
+
 
 import '../models/usuarios/enfermero.dart';
 import '../models/usuarios/medico.dart';
@@ -177,22 +180,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 OutlinedButton.icon(
                   onPressed: () => _mostrarVerificadorPaciente(), 
-                  icon: const Icon(Icons.how_to_reg_rounded),
+                  icon: const Icon(Icons.how_to_reg_rounded, size: 22), 
                   label: const Text("Verificar Paciente"),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(0, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     side: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
+                    textStyle: const TextStyle(
+                      fontSize: 16, // Tamaño de la letra (puedes subirlo a 18 si lo quieres más grande)
+                      fontWeight: FontWeight.w600, // Grosor de la letra
+                    ),
                   ),
                 ),
-                ElevatedButton.icon(
+                OutlinedButton.icon(
                   onPressed: () => _mostrarFormularioCampana(admin),
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const Icon(Icons.add_rounded, size: 22),
                   label: const Text("Nueva Campaña"),
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
+                  style: OutlinedButton.styleFrom(
+                    elevation: 0, // Fundamental para que la transparencia se vea limpia
                     minimumSize: const Size(0, 48),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    // 1. Color amarillo (tertiary) pero al 75% de opacidad para apagar lo chillón
+                    backgroundColor: Theme.of(context).colorScheme.tertiary.withOpacity(0.75),
+                    // 2. Letras e ícono blancos
+                    foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                    textStyle: const TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -260,12 +275,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           children: [
                             TextButton.icon(
                               onPressed: () {
-                                admin.solicitarReporteEfectos(campana);
-                                var reporte = campana.generarReporteEfectos();
-                                CustomDialogs.showMessage(context, "Reporte de Efectos", reporte.toString());
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => ReporteEstadisticoScreen(campana: campana)),
+                                );
                               },
                               icon: Icon(Icons.analytics_rounded, color: Theme.of(context).colorScheme.primary),
-                              label: Text("Reporte Efectos", style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                              label: const Text("Ver Estadísticas Completas"),
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton.icon(
@@ -598,90 +614,170 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   // LÓGICA DE DIÁLOGOS Y FORMULARIOS
   
-  void _mostrarVerificadorPaciente() {
+ void _mostrarVerificadorPaciente() {
     final formKey = GlobalKey<FormState>();
     final rutCtrl = TextEditingController();
     Campana? campanaSeleccionada = db.campanas.isNotEmpty ? db.campanas.first : null;
+
+    // 1. ELIMINAMOS el FocusNode antiguo
 
     showDialog(
       context: context,
       builder: (context) {
         final colorScheme = Theme.of(context).colorScheme;
         
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Icon(Icons.how_to_reg_rounded, color: colorScheme.primary),
-              const SizedBox(width: 8),
-              const Text("Verificar Elegibilidad"),
-            ],
-          ),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text("Valida si un paciente cumple con los requisitos del tramo actual.", style: TextStyle(fontSize: 13)),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: rutCtrl,
-                  decoration: const InputDecoration(labelText: "RUT del Paciente", prefixIcon: Icon(Icons.badge_outlined)),
-                  validator: AppValidators.validarRut,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<Campana>(
-                  value: campanaSeleccionada,
-                  decoration: const InputDecoration(labelText: "Campaña a Consultar"),
-                  items: db.campanas.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
-                  onChanged: (val) => campanaSeleccionada = val,
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          elevation: 0,
+          backgroundColor: Colors.transparent, // Fondo transparente para la sombra custom
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 450),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.primary.withOpacity(0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cerrar")),
-            ElevatedButton(
-              onPressed: () {
-                if (formKey.currentState!.validate() && campanaSeleccionada != null) {
-                  String rutIngresado = AppValidators.formatearRut(rutCtrl.text);
-                  var pacientes = db.usuarios.whereType<Paciente>().where((p) => p.rut == rutIngresado).toList();
-                  
-                  if (pacientes.isEmpty) {
-                    CustomDialogs.showMessage(context, "Error", "El RUT ingresado no corresponde a ningún paciente registrado.");
-                    return;
-                  }
-                  
-                  var paciente = pacientes.first;
-                  bool esElegible = false;
-                  
-                  for (var tramo in campanaSeleccionada!.tramos) {
-                    if (tramo.validarPrioridadPaciente(paciente)) {
-                      esElegible = true;
-                      break;
-                    }
-                  }
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 1. Ícono de Cabecera
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.how_to_reg_rounded, size: 36, color: colorScheme.primary),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // 2. Título Centralizado
+                    Text(
+                      "Verificar Elegibilidad",
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: colorScheme.primary,
+                        letterSpacing: -0.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Valida si un paciente cumple con los requisitos",
+                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
 
-                  Navigator.pop(context); 
-                  
-                  if (esElegible) {
-                    CustomDialogs.showMessage(
-                      context, 
-                      "✅ Paciente Elegible", 
-                      "El paciente ${paciente.nombres} ${paciente.apellidos} SÍ cumple con los requisitos de prioridad para ser inoculado en esta campaña."
-                    );
-                  } else {
-                    CustomDialogs.showMessage(
-                      context, 
-                      "❌ No Elegible", 
-                      "El paciente ${paciente.nombres} ${paciente.apellidos} NO pertenece a la población objetivo de los tramos activos en esta campaña."
-                    );
-                  }
-                }
-              },
-              child: const Text("Verificar RUT"),
-            )
-          ],
+                    // 3. Inputs
+                    TextFormField(
+                      controller: rutCtrl,
+                      // 2. ELIMINAMOS EL FOCUSNODE AQUÍ
+                      decoration: const InputDecoration(
+                        labelText: "RUT del Paciente", 
+                        prefixIcon: Icon(Icons.badge_outlined)
+                      ),
+                      // 3. AGREGAMOS EL FORMATTER
+                      inputFormatters: [
+                        RutFormatter(),
+                        LengthLimitingTextInputFormatter(12),
+                      ],
+                      validator: AppValidators.validarRut,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<Campana>(
+                      value: campanaSeleccionada,
+                      decoration: const InputDecoration(
+                        labelText: "Campaña a Consultar", 
+                        prefixIcon: Icon(Icons.campaign_outlined)
+                      ),
+                      items: db.campanas.map((c) => DropdownMenuItem(value: c, child: Text(c.nombre))).toList(),
+                      onChanged: (val) => campanaSeleccionada = val,
+                    ),
+                    const SizedBox(height: 32),
+
+                    // 4. Botones Estilizados en Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: colorScheme.outlineVariant),
+                            ),
+                            child: Text("Cancelar", style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              if (formKey.currentState!.validate() && campanaSeleccionada != null) {
+                                // Formatear por última vez antes de buscar (por seguridad)
+                                rutCtrl.text = AppValidators.formatearRut(rutCtrl.text);
+                                String rutIngresado = rutCtrl.text;
+                                
+                                var pacientes = db.usuarios.whereType<Paciente>().where((p) => p.rut == rutIngresado).toList();
+                                
+                                if (pacientes.isEmpty) {
+                                  CustomDialogs.showMessage(context, "Error", "El RUT ingresado no corresponde a ningún paciente registrado.");
+                                  return;
+                                }
+                                
+                                var paciente = pacientes.first;
+                                bool esElegible = false;
+                                
+                                for (var tramo in campanaSeleccionada!.tramos) {
+                                  if (tramo.validarPrioridadPaciente(paciente)) {
+                                    esElegible = true;
+                                    break;
+                                  }
+                                }
+
+                                Navigator.pop(context); 
+                                
+                                if (esElegible) {
+                                  CustomDialogs.showMessage(
+                                    context, 
+                                    "✅ Paciente Elegible", 
+                                    "El paciente ${paciente.nombres} ${paciente.apellidos} SÍ cumple con los requisitos de prioridad para ser inoculado en esta campaña."
+                                  );
+                                } else {
+                                  CustomDialogs.showMessage(
+                                    context, 
+                                    "❌ No Elegible", 
+                                    "El paciente ${paciente.nombres} ${paciente.apellidos} NO pertenece a la población objetivo de los tramos activos en esta campaña."
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text("Verificar RUT"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         );
       }
     );
@@ -1226,12 +1322,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final especialidadCtrl = TextEditingController(text: isEditing && usuarioAEditar is Medico ? usuarioAEditar.especialidad : "");
     final unidadCtrl = TextEditingController(text: isEditing && usuarioAEditar is Enfermero ? usuarioAEditar.unidadAsignada : "");
 
-    final rutFocusNode = FocusNode();
-    rutFocusNode.addListener(() {
-      if (!rutFocusNode.hasFocus && rutCtrl.text.isNotEmpty) {
-        rutCtrl.text = AppValidators.formatearRut(rutCtrl.text);
-      }
-    });
+    bool intentoGuardar = false;
+
+    // 1. ELIMINAMOS el FocusNode antiguo
 
     showDialog(
       context: context,
@@ -1256,7 +1349,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: SingleChildScrollView(
                   child: Form(
                     key: formKey,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    autovalidateMode: intentoGuardar ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1289,8 +1382,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         
                         TextFormField(
                           controller: rutCtrl,
-                          focusNode: rutFocusNode,
+                          // 2. ELIMINAMOS EL FOCUSNODE AQUÍ
                           decoration: const InputDecoration(labelText: "RUT", prefixIcon: Icon(Icons.pin_outlined)),
+                          inputFormatters: [
+                            RutFormatter(),
+                            LengthLimitingTextInputFormatter(12),
+                          ],
                           validator: AppValidators.validarRut, 
                           enabled: !isEditing,
                         ),
@@ -1375,6 +1472,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
                                 onPressed: () {
+                                  setStateDialog(() {
+                                    intentoGuardar = true;
+                                  });
                                   if (formKey.currentState!.validate()) {
                                     
                                     rutCtrl.text = AppValidators.formatearRut(rutCtrl.text);
@@ -1411,9 +1511,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           }
         );
       }
-    ).then((_) {
-      rutFocusNode.dispose();
-    });
+    );
   }
 
   void _mostrarFormularioTramo(Campana campana) {
