@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../screens/welcome_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/create_profile_screen.dart';
 import '../screens/enfermero_dashboard.dart';
@@ -10,7 +9,6 @@ import '../services/mock_auth_repository.dart';
 
 class AppRoutes {
   // Nombres de las rutas
-static const String welcome = '/welcome'; // <-- Mueve la bienvenida a otra ruta si deseas conservarla
   static const String login = '/';
   static const String dashboard = '/dashboard';
   static const String createProfile = '/create_profile';
@@ -31,7 +29,6 @@ static const String welcome = '/welcome'; // <-- Mueve la bienvenida a otra ruta
     }
 
     return {
-      welcome: (context) => const WelcomeScreen(),
       login: (context) => const LoginScreen(),
       dashboard: (context) => const DashboardScreen(),
       createProfile: (context) => const CreateProfileScreen(),
