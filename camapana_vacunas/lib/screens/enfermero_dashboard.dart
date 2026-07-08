@@ -6,6 +6,7 @@ import '../models/transacciones/fachada_registro_vacunacion.dart';
 import '../widgets/custom_dialogs.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/header_actions.dart';
+import '../widgets/modal_inoculacion.dart';
 
 class EnfermeroDashboard extends StatefulWidget {
   final VoidCallback onLogout;
@@ -20,9 +21,194 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
   CentroVacunacion? _centroSeleccionado;
   final _obsCtrl = TextEditingController(text: "Procedimiento exitoso sin reacciones inmediatas.");
 
+  // --- COMPONENTE VISUAL DE STOCK DE VACUNAS ---
+  Widget _buildStockVisualizer(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_centroSeleccionado == null) return const SizedBox.shrink();
+
+    final inventarioLocal = _centroSeleccionado!.inventarios;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.01),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.inventory_2_rounded, color: colorScheme.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Disponibilidad de Stock de la Sede",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: colorScheme.onSurface),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          inventarioLocal.isEmpty
+              ? Text(
+                  "No hay vacunas registradas en este recinto.",
+                  style: TextStyle(color: colorScheme.error, fontStyle: FontStyle.italic),
+                )
+              : Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: inventarioLocal.map((inv) {
+                    final cantidad = inv.cantidadDisponible;
+                    final estaVencida = inv.estaVencida();
+
+                    Color badgeColor;
+                    String textDisplay = cantidad.toString();
+
+                    if (estaVencida) {
+                      badgeColor = colorScheme.error;
+                      textDisplay = "VENCIDA";
+                    } else if (cantidad > 20) {
+                      badgeColor = Colors.green;
+                    } else if (cantidad > 0) {
+                      badgeColor = Colors.orange;
+                    } else {
+                      badgeColor = colorScheme.error;
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: badgeColor.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.vaccines_rounded, color: badgeColor, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            inv.vacuna.idVacuna,
+                            style: TextStyle(fontWeight: FontWeight.w600, color: colorScheme.onSurface, fontSize: 13),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: badgeColor,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              textDisplay,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+        ],
+      ),
+    );
+  }
+
+  // --- MODAL DE HISTORIAL MÉDICO (NUEVO) ---
+  void _mostrarHistorialMedico(BuildContext context, Paciente paciente) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: colorScheme.surface,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 450),
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.medical_information_rounded, size: 48, color: colorScheme.primary),
+                const SizedBox(height: 16),
+                Text("Ficha Clínica", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: colorScheme.onSurface)),
+                Text("${paciente.nombres} ${paciente.apellidos}", style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 32),
+
+                // AQUÍ LA APP "ESCUCHA" EL CHECK DEL PACIENTE
+                if (paciente.dioConsentimientoMedico) ...[
+                  // SI DIO CONSENTIMIENTO
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Antecedentes Registrados:", style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                        const SizedBox(height: 8),
+                        Text(paciente.antecedentesMedicos, style: TextStyle(height: 1.5, color: colorScheme.onSurface)),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  // SI NO DIO CONSENTIMIENTO
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceVariant.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.lock_person_rounded, size: 36, color: colorScheme.outline),
+                        const SizedBox(height: 12),
+                        Text("Acceso Restringido", style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant)),
+                        const SizedBox(height: 8),
+                        Text(
+                          "El paciente no ha otorgado el consentimiento para compartir sus antecedentes médicos con el personal de salud en esta sesión.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                    child: const Text("Cerrar"),
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-  // Verificamos si hay un usuario activo, si no lo hay, redirigimos al login
     if (db.usuarioActivo == null) {
       Future.microtask(() => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false));
       return Scaffold(
@@ -45,35 +231,11 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
         ),
       );
     }
-  if (db.usuarioActivo == null) {
-      Future.microtask(() => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false));
-      return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-      );
-    }
 
-    _centroSeleccionado ??= db.centros.isNotEmpty ? db.centros.first : null;
-
-    if (_centroSeleccionado == null) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(
-          child: Text("No existen sedes registradas en el sistema.", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ),
-      );
-    }
-
-    // 1. Citas por atender
     var citasPendientes = _centroSeleccionado!.citasAgendadas
-        .where((c) => c.estado == "Programada")
+        .where((c) => c.estado == "En Sala de Espera")
         .toList();
 
-    // 2. Registros completados en sede específica para el historial
     var registrosSede = db.historialRegistros
         .where((reg) => reg.idCentro == _centroSeleccionado!.idCentro)
         .toList();
@@ -160,7 +322,8 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // SECCIÓN 1: PENDIENTES
+                  _buildStockVisualizer(context),
+                  
                   Row(
                     children: [
                       Icon(Icons.people_alt_rounded, color: Theme.of(context).colorScheme.tertiary),
@@ -185,7 +348,7 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
                               children: [
                                 Icon(Icons.coffee_rounded, size: 48, color: Theme.of(context).colorScheme.outlineVariant),
                                 const SizedBox(height: 16),
-                                Text("No hay citas programadas para hoy.", style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                Text("No hay pacientes en sala de espera actualmente.", style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                               ],
                             ),
                           )
@@ -214,36 +377,70 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
                                   leading: Container(
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(color: Theme.of(context).colorScheme.tertiary.withOpacity(0.2), shape: BoxShape.circle),
-                                    child: Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.tertiary), // Se usa el color terciario para llamar a la acción
+                                    child: Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.tertiary),
                                   ),
                                   title: Text("${paciente.nombres} ${paciente.apellidos} (${paciente.rut})", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  
+                                  // --- AQUÍ ESTÁ EL CAMBIO (NUEVO SUBTITLE) ---
                                   subtitle: Padding(
                                     padding: const EdgeInsets.only(top: 4.0),
-                                    child: Text("Grupo: ${paciente.grupoRiesgo}\nPlanificado: ${DateFormatter.formatDateTime(cita.fechaHora)}", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text("Grupo: ${paciente.grupoRiesgo}\nLlegada: ${DateFormatter.formatDateTime(cita.fechaHora)}", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
+                                        const SizedBox(height: 8),
+                                        
+                                        // EL BOTÓN / LINK DE HISTORIAL
+                                        InkWell(
+                                          onTap: () => _mostrarHistorialMedico(context, paciente), // <-- Llama al modal
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.medical_information_rounded, size: 16, color: Theme.of(context).colorScheme.primary),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                "Ver antecedentes médicos", 
+                                                style: TextStyle(
+                                                  color: Theme.of(context).colorScheme.primary, 
+                                                  fontWeight: FontWeight.bold, 
+                                                  decoration: TextDecoration.underline, 
+                                                  fontSize: 13
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  trailing: ElevatedButton.icon(
-                                    icon: const Icon(Icons.vaccines_rounded),
-                                    label: const Text("Inmunizar"),
-                                    style: ElevatedButton.styleFrom(
+                                  // ---------------------------------------------
+
+                                  trailing: FilledButton.icon(
+                                    icon: const Icon(Icons.vaccines_rounded, size: 18),
+                                    label: const Text(
+                                      "Inmunizar", 
+                                      style: TextStyle(fontWeight: FontWeight.bold)
+                                    ),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Theme.of(context).colorScheme.primary,
+                                      foregroundColor: Colors.white,
                                       elevation: 0,
-                                      minimumSize: const Size(0, 40),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
                                     ),
                                     onPressed: () {
-                                      // Llamada unificada a la Fachada
-                                      String resultado = FachadaRegistroVacunacion.procesarVacunacion(
-                                        cita: cita,
-                                        paciente: paciente,
-                                        centro: _centroSeleccionado!,
-                                        rutProfesional: db.usuarioActivo!.rut,
-                                        observaciones: _obsCtrl.text
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (contextDialog) => ModalInoculacion(
+                                          cita: cita,
+                                          paciente: paciente,
+                                          centro: _centroSeleccionado!,
+                                          onSuccess: () => setState(() {}), 
+                                        ),
                                       );
-                                      
-                                      if (resultado.startsWith("Éxito")) {
-                                        CustomDialogs.showSnackBar(context, resultado);
-                                        setState(() {});
-                                      } else {
-                                        CustomDialogs.showMessage(context, "Error de Validación", resultado);
-                                      }
                                     },
                                   ),
                                 ),
@@ -255,7 +452,6 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
                   const Divider(),
                   const SizedBox(height: 16),
 
-                  // SECCIÓN 2: HISTORIAL LOGUEADO
                   Row(
                     children: [
                       Icon(Icons.assignment_turned_in_rounded, color: Theme.of(context).colorScheme.secondary),
@@ -287,7 +483,6 @@ class _EnfermeroDashboardState extends State<EnfermeroDashboard> {
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 decoration: BoxDecoration(
-                                  // Usamos secondaryContainer para los ítems ya procesados con éxito
                                   color: Theme.of(context).colorScheme.secondaryContainer, 
                                   borderRadius: BorderRadius.circular(15),
                                 ),

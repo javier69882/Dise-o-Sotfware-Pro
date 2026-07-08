@@ -94,6 +94,7 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
     
     setState(() {
       _historialGenerado = director.construirHistorialCompleto(paciente, _misAlergias, _misCondiciones);
+      paciente.antecedentesMedicos = "Alergias: ${_misAlergias.isEmpty ? 'Ninguna' : _misAlergias.join(', ')}\nCondiciones: ${_misCondiciones.isEmpty ? 'Ninguna' : _misCondiciones.join(', ')}";
     });
   }
 
@@ -312,16 +313,16 @@ class _PacienteDashboardState extends State<PacienteDashboard> {
       title: Text("Autorizo explícitamente el uso de mi historial médico por parte del personal de salud antes de la inoculación.", 
         style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)
       ),
-      value: _autorizaHistorial,
+      value: perfil.dioConsentimientoMedico,
       activeColor: Theme.of(context).colorScheme.primary,
       contentPadding: EdgeInsets.zero,
       controlAffinity: ListTileControlAffinity.leading,
-      onChanged: (val) => setState(() => _autorizaHistorial = val ?? false),
+      onChanged: (val) => setState(() => perfil.dioConsentimientoMedico = val ?? false),
     );
 
     Widget botonGenerar = ElevatedButton.icon(
       style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56)),
-      onPressed: _autorizaHistorial ? () => _generarHistorialMedico(perfil) : null,
+      onPressed: perfil.dioConsentimientoMedico ? () => _generarHistorialMedico(perfil) : null,
       icon: const Icon(Icons.download_rounded),
       label: const Text("Generar Documento"),
     );

@@ -5,6 +5,8 @@ class Paciente extends PersonaUsuaria {
   String prevision;
   String grupoRiesgo;
   String estadoVacunacion;
+  bool dioConsentimientoMedico;
+  String antecedentesMedicos;
 
   Paciente({
     required super.rut,
@@ -17,6 +19,8 @@ class Paciente extends PersonaUsuaria {
     required this.prevision,
     required this.grupoRiesgo,
     required this.estadoVacunacion,
+    this.dioConsentimientoMedico = false, // Por defecto falso
+    this.antecedentesMedicos = "Sin antecedentes médicos registrados.",
   });
 
   // Mapeo para la BD (Firestore, SQL, etc.)
@@ -32,6 +36,8 @@ class Paciente extends PersonaUsuaria {
       'prevision': prevision,
       'grupoRiesgo': grupoRiesgo,
       'estadoVacunacion': estadoVacunacion,
+      'dioConsentimientoMedico': dioConsentimientoMedico,
+      'antecedentesMedicos': antecedentesMedicos,
     };
   }
 
@@ -47,6 +53,8 @@ class Paciente extends PersonaUsuaria {
       prevision: map['prevision'],
       grupoRiesgo: map['grupoRiesgo'],
       estadoVacunacion: map['estadoVacunacion'],
+      dioConsentimientoMedico: map['dioConsentimientoMedico'] ?? false,
+      antecedentesMedicos: map['antecedentesMedicos'] ?? "Sin antecedentes médicos registrados.",
     );
   }
 }

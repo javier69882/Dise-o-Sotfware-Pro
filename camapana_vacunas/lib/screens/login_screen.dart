@@ -56,11 +56,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (usuario != null) {
       if (usuario is Paciente) {
         Navigator.pushReplacementNamed(context, '/dashboard'); 
-      } else if (usuario is Enfermero) {
+      } else if (usuario is Enfermero|| usuario is Medico) {
         Navigator.pushReplacementNamed(context, '/enfermero_dashboard');
-      } else if (usuario is Medico) {
-        Navigator.pushReplacementNamed(context, '/medico_dashboard');
-      } else if (usuario is Administrador) {
+      } 
+        else if (usuario is Administrador) {
         Navigator.pushReplacementNamed(context, '/admin_dashboard');
       } else if (usuario is Secretario) {
         Navigator.pushReplacementNamed(context, '/secretario_dashboard');

@@ -17,29 +17,56 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
   final _rutCtrl = TextEditingController();
   final _nombresCtrl = TextEditingController();
   final _apellidosCtrl = TextEditingController();
-  final _correoCtrl = TextEditingController();
   final _telefonoCtrl = TextEditingController();
+  final _correoCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
+  
   String _previsionSeleccionada = "Fonasa";
+
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   final FocusNode _rutFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    _rutFocusNode.addListener(() {
-      if (!_rutFocusNode.hasFocus && _rutCtrl.text.isNotEmpty) {
-        _rutCtrl.text = AppValidators.formatearRut(_rutCtrl.text);
-      }
-    });
   }
 
   void _registrarPaciente() {
     if (_formKey.currentState!.validate()) {
       
-      _rutCtrl.text = AppValidators.formatearRut(_rutCtrl.text);
+      final rutFormateado = AppValidators.formatearRut(_rutCtrl.text.trim());
+      final correoIngresado = _correoCtrl.text.trim().toLowerCase();
 
+      // --- VALIDACIÓN DE DUPLICADOS MANUAL ---
+      bool rutDuplicado = db.usuarios.any((u) => u.rut == rutFormateado);
+      bool correoDuplicado = db.usuarios.any((u) => u.correo.toLowerCase() == correoIngresado);
+
+      if (rutDuplicado) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error: Ya existe una cuenta registrada con este RUT.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        return; 
+      }
+
+      if (correoDuplicado) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error: Este correo electrónico ya está en uso.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        return; 
+      }
+
+      // Si todo está correcto, creamos el paciente
       var nuevoPaciente = Paciente(
-        rut: _rutCtrl.text.trim(),
+        rut: rutFormateado,
         nombres: _nombresCtrl.text.trim(),
         apellidos: _apellidosCtrl.text.trim(),
         correo: _correoCtrl.text.trim(),
@@ -48,6 +75,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
         prevision: _previsionSeleccionada,
         grupoRiesgo: "Público General", 
         estadoVacunacion: "Sin vacunas", 
+        // password: _passwordCtrl.text.trim(), // Descomentar si tu BD lo maneja
       );
 
       setState(() {
@@ -70,8 +98,10 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
     _rutCtrl.dispose();
     _nombresCtrl.dispose();
     _apellidosCtrl.dispose();
-    _correoCtrl.dispose();
     _telefonoCtrl.dispose();
+    _correoCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
     super.dispose();
   }
 
@@ -112,7 +142,6 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                 ),
                 child: Form(
                   key: _formKey,
-                  // Se eliminó el autovalidateMode de aquí para que no salte todo de golpe
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,7 +155,6 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                         ),
                       ),
                       
-                      // --- INICIO SECCIÓN LOGO ---
                       Align(
                         alignment: Alignment.center,
                         child: Container(
@@ -137,14 +165,14 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                           ),
                           child: Image.asset(
                             'assets/images/logo.png',
-                            width: 100, // Un poco más pequeño que en el login para balancear el espacio
+                            width: 100, 
                             height: 100,
                             fit: BoxFit.contain, 
+                            errorBuilder: (context, error, stackTrace) => Icon(Icons.health_and_safety_rounded, size: 60, color: colorScheme.primary),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // --- FIN SECCIÓN LOGO ---
 
                       Text(
                         "Crear Cuenta",
@@ -163,10 +191,12 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                       ),
                       const SizedBox(height: 32),
 
+                      // --- SECCIÓN 1: DATOS PERSONALES ---
                       TextFormField(
                         controller: _rutCtrl,
                         focusNode: _rutFocusNode, 
-                        autovalidateMode: AutovalidateMode.onUserInteraction, // Validación independiente
+                        autovalidateMode: AutovalidateMode.onUserInteraction, 
+                        inputFormatters: [RutFormatter()],
                         decoration: InputDecoration(
                           labelText: "RUT (Ej: 12.345.678-9)",
                           prefixIcon: const Icon(Icons.badge_outlined),
@@ -182,11 +212,12 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: _nombresCtrl,
-                              autovalidateMode: AutovalidateMode.onUserInteraction, // Validación independiente
+                              autovalidateMode: AutovalidateMode.onUserInteraction, 
                               decoration: InputDecoration(
                                 labelText: "Nombres",
                                 prefixIcon: const Icon(Icons.person_outline),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                errorMaxLines: 2,
                               ),
                               validator: (v) => AppValidators.validarVacio(v, "Nombres"), 
                             ),
@@ -195,28 +226,16 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: _apellidosCtrl,
-                              autovalidateMode: AutovalidateMode.onUserInteraction, // Validación independiente
+                              autovalidateMode: AutovalidateMode.onUserInteraction, 
                               decoration: InputDecoration(
                                 labelText: "Apellidos",
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                errorMaxLines: 2,
                               ),
                               validator: (v) => AppValidators.validarVacio(v, "Apellidos"), 
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: _correoCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        autovalidateMode: AutovalidateMode.onUserInteraction, // Validación independiente
-                        decoration: InputDecoration(
-                          labelText: "Correo Electrónico",
-                          prefixIcon: const Icon(Icons.email_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        validator: AppValidators.validarCorreo, 
                       ),
                       const SizedBox(height: 16),
 
@@ -227,11 +246,12 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                             child: TextFormField(
                               controller: _telefonoCtrl,
                               keyboardType: TextInputType.phone,
-                              autovalidateMode: AutovalidateMode.onUserInteraction, // Validación independiente
+                              autovalidateMode: AutovalidateMode.onUserInteraction, 
                               decoration: InputDecoration(
                                 labelText: "Teléfono",
                                 prefixIcon: const Icon(Icons.phone_outlined),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                errorMaxLines: 2,
                               ),
                               inputFormatters: AppValidators.filtroTelefono, 
                               validator: AppValidators.validarTelefono, 
@@ -254,6 +274,76 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 32),
+                      const Divider(),
+                      const SizedBox(height: 32),
+
+                      // --- SECCIÓN 2: DATOS DE ACCESO ---
+                      TextFormField(
+                        controller: _correoCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        autovalidateMode: AutovalidateMode.onUserInteraction, 
+                        decoration: InputDecoration(
+                          labelText: "Correo Electrónico",
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          errorMaxLines: 2,
+                        ),
+                        validator: AppValidators.validarCorreo, 
+                      ),
+                      const SizedBox(height: 16),
+
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _passwordCtrl,
+                              obscureText: _obscurePassword,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              decoration: InputDecoration(
+                                labelText: "Contraseña",
+                                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                errorMaxLines: 2,
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return "Obligatorio.";
+                                if (v.length < 6) return "Mínimo 6 caracteres.";
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          
+                          Expanded(
+                            child: TextFormField(
+                              controller: _confirmPasswordCtrl,
+                              obscureText: _obscureConfirmPassword,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              decoration: InputDecoration(
+                                labelText: "Confirmar",
+                                prefixIcon: const Icon(Icons.lock_reset_rounded),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return "Confirma clave.";
+                                if (v != _passwordCtrl.text) return "No coinciden.";
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      
                       const SizedBox(height: 40),
 
                       ElevatedButton(

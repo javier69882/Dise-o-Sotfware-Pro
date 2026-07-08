@@ -39,7 +39,7 @@ class AppValidators {
     // Aceptamos formato +569 o solo los 9 dígitos
     final regex = RegExp(r'^(\+?56)?9[0-9]{8}$');
     if (!regex.hasMatch(value.replaceAll(' ', ''))) {
-      return 'Debe ser un número celular válido (Ej: +56912345678).';
+      return 'Debe ser número válido (Ej: +56912345678).';
     }
     return null;
   }
